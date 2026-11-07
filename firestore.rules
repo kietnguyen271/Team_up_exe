@@ -1,0 +1,274 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function verified() {
+      return request.auth != null && request.auth.token.email_verified == true;
+    }
+    function adminPath() {
+      return /databases/$(database)/documents/admins/$(request.auth.token.email.lower());
+    }
+    function isAdmin() {
+      return verified() && exists(adminPath());
+    }
+    function userPath(uid) {
+      return /databases/$(database)/documents/users/$(uid);
+    }
+    function roomPath(roomId) {
+      return /databases/$(database)/documents/rooms/$(roomId);
+    }
+    function requestPath(roomId, uid) {
+      return /databases/$(database)/documents/rooms/$(roomId)/joinRequests/$(uid);
+    }
+    function votePath(roomId) {
+      return /databases/$(database)/documents/rooms/$(roomId)/voteSession/current;
+    }
+    function disbandPath(roomId) {
+      return /databases/$(database)/documents/rooms/$(roomId)/disband/current;
+    }
+    function isMember(roomId) {
+      return verified() && request.auth.uid in get(roomPath(roomId)).data.memberIds;
+    }
+    function isLeader(roomId) {
+      return verified() && get(roomPath(roomId)).data.leaderId == request.auth.uid;
+    }
+
+    match /admins/{email} {
+      allow get: if verified() && request.auth.token.email.lower() == email;
+      allow list: if isAdmin();
+      allow write: if false;
+    }
+
+    match /users/{uid} {
+      allow read: if verified();
+      allow create: if verified() && request.auth.uid == uid &&
+        request.resource.data.email == request.auth.token.email.lower() &&
+        request.resource.data.status == 'active' &&
+        request.resource.data.name is string &&
+        request.resource.data.name.size() > 0 &&
+        request.resource.data.bio is string &&
+        request.resource.data.bio.size() > 0 &&
+        request.resource.data.bio.size() <= 280 &&
+        request.resource.data.skills is list &&
+        request.resource.data.skills.size() > 0 &&
+        request.resource.data.serverId == null &&
+        request.resource.data.roomId == null &&
+        request.resource.data.pendingRequestIds == [];
+      allow update: if isAdmin() ||
+        (verified() && request.auth.uid == uid &&
+          request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['name', 'bio', 'skills', 'serverId', 'roomId', 'pendingRequestIds']) &&
+          request.resource.data.status == resource.data.status &&
+          request.resource.data.pendingRequestIds is list &&
+          request.resource.data.pendingRequestIds.size() <= 3 &&
+          (request.resource.data.serverId == resource.data.serverId ||
+            (resource.data.roomId == null &&
+              request.resource.data.roomId == null &&
+              request.resource.data.serverId in ['exe1', 'exe2']) ||
+            (resource.data.roomId == null &&
+              request.resource.data.roomId != null &&
+              request.resource.data.serverId ==
+                getAfter(roomPath(request.resource.data.roomId)).data.serverId)) &&
+          (
+            request.resource.data.roomId == resource.data.roomId ||
+            (request.resource.data.roomId != null &&
+              uid in getAfter(roomPath(request.resource.data.roomId)).data.memberIds) ||
+            (request.resource.data.roomId == null &&
+              !(uid in getAfter(roomPath(resource.data.roomId)).data.memberIds))
+          )) ||
+        (verified() && request.resource.data.roomId == resource.data.roomId &&
+          request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['pendingRequestIds']) &&
+          resource.data.pendingRequestIds
+            .removeAll(request.resource.data.pendingRequestIds).size() == 1 &&
+          isMember(resource.data.pendingRequestIds
+            .removeAll(request.resource.data.pendingRequestIds)[0]) &&
+          getAfter(requestPath(
+            resource.data.pendingRequestIds
+              .removeAll(request.resource.data.pendingRequestIds)[0], uid
+          )).data.status in ['rejected', 'expired']) ||
+        (verified() && request.resource.data.roomId != null &&
+          isMember(request.resource.data.roomId) &&
+          request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['roomId', 'serverId', 'pendingRequestIds']) &&
+          uid in getAfter(roomPath(request.resource.data.roomId)).data.memberIds) ||
+        (verified() && resource.data.roomId != null &&
+          isMember(resource.data.roomId) &&
+          request.resource.data.roomId == null &&
+          request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['roomId']) &&
+          getAfter(disbandPath(resource.data.roomId)).data.status == 'done' &&
+          getAfter(roomPath(resource.data.roomId)).data.memberIds.size() == 0);
+      allow delete: if false;
+
+      match /fcmTokens/{token} {
+        allow read, write: if verified() && request.auth.uid == uid;
+      }
+    }
+
+    match /servers/{serverId} {
+      allow read: if verified();
+      allow write: if isAdmin();
+    }
+
+    match /rooms/{roomId} {
+      allow read: if verified();
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin() ||
+        (isMember(roomId) &&
+          request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['name', 'nameLower'])) ||
+        (isLeader(roomId) &&
+          request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['locked'])) ||
+        (isMember(roomId) && resource.data.leaderId == null &&
+          request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['leaderId']) &&
+          request.resource.data.leaderId == getAfter(votePath(roomId)).data.winnerUid) ||
+        (verified() &&
+          request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['memberIds']) &&
+          resource.data.locked == false &&
+          request.resource.data.memberIds.size() == resource.data.memberIds.size() + 1 &&
+          request.resource.data.memberIds.hasAll(resource.data.memberIds) &&
+          request.resource.data.memberIds.size() <= resource.data.capacity &&
+          get(userPath(
+            request.resource.data.memberIds[request.resource.data.memberIds.size() - 1]
+          )).data.status == 'active' &&
+          get(userPath(
+            request.resource.data.memberIds[request.resource.data.memberIds.size() - 1]
+          )).data.roomId == null &&
+          get(userPath(
+            request.resource.data.memberIds[request.resource.data.memberIds.size() - 1]
+          )).data.serverId == resource.data.serverId &&
+          (
+            (resource.data.memberIds.size() == 0 &&
+              request.resource.data.memberIds[0] == request.auth.uid) ||
+            (isMember(roomId) &&
+              getAfter(requestPath(roomId,
+                request.resource.data.memberIds[request.resource.data.memberIds.size() - 1]
+              )).data.status == 'approved')
+          ) &&
+          getAfter(userPath(
+            request.resource.data.memberIds[request.resource.data.memberIds.size() - 1]
+          )).data.roomId == roomId) ||
+        (isMember(roomId) &&
+          request.resource.data.memberIds.size() == resource.data.memberIds.size() - 1 &&
+          request.resource.data.memberIds.hasOnly(resource.data.memberIds) &&
+          request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['memberIds', 'leaderId', 'locked', 'name', 'nameLower']) &&
+          resource.data.memberIds.removeAll(request.resource.data.memberIds)[0] == request.auth.uid &&
+          getAfter(userPath(request.auth.uid)).data.roomId == null) ||
+        (isMember(roomId) &&
+          getAfter(disbandPath(roomId)).data.status == 'done' &&
+          request.resource.data.memberIds.size() == 0 &&
+          request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['memberIds', 'leaderId', 'locked', 'name', 'nameLower']));
+
+      match /joinRequests/{uid} {
+        allow read: if verified() &&
+          (request.auth.uid == uid || isMember(roomId));
+        allow create: if verified() && request.auth.uid == uid &&
+          request.resource.data.status == 'pending' &&
+          request.resource.data.message is string &&
+          request.resource.data.message.size() <= 280 &&
+          !isMember(roomId) &&
+          get(userPath(uid)).data.status == 'active' &&
+          get(userPath(uid)).data.roomId == null &&
+          get(userPath(uid)).data.serverId ==
+            get(roomPath(roomId)).data.serverId &&
+          roomId in getAfter(userPath(uid)).data.pendingRequestIds &&
+          getAfter(userPath(uid)).data.pendingRequestIds.size() <= 3 &&
+          get(roomPath(roomId)).data.locked == false &&
+          get(roomPath(roomId)).data.memberIds.size() > 0 &&
+          get(roomPath(roomId)).data.memberIds.size() < get(roomPath(roomId)).data.capacity;
+        allow update: if verified() && (
+          (request.auth.uid == uid &&
+            (resource.data.status in ['cancelled', 'rejected', 'expired'] ||
+              resource.data.expiresAt <= request.time) &&
+            request.resource.data.diff(resource.data).affectedKeys()
+              .hasOnly(['createdAt', 'expiresAt', 'status', 'decidedBy', 'message']) &&
+            request.resource.data.status == 'pending' &&
+            request.resource.data.decidedBy == null &&
+            request.resource.data.message is string &&
+            request.resource.data.message.size() <= 280 &&
+            get(userPath(uid)).data.status == 'active' &&
+            get(userPath(uid)).data.roomId == null &&
+            get(userPath(uid)).data.serverId == get(roomPath(roomId)).data.serverId &&
+            roomId in getAfter(userPath(uid)).data.pendingRequestIds &&
+            getAfter(userPath(uid)).data.pendingRequestIds.size() <= 3 &&
+            get(roomPath(roomId)).data.locked == false &&
+            get(roomPath(roomId)).data.memberIds.size() > 0 &&
+            get(roomPath(roomId)).data.memberIds.size() < get(roomPath(roomId)).data.capacity) ||
+          (request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['status', 'decidedBy']) &&
+            ((request.auth.uid == uid &&
+              request.resource.data.status in ['cancelled', 'expired']) ||
+             (isMember(roomId) &&
+              request.resource.data.status in ['approved', 'rejected', 'expired', 'cancelled'] &&
+              (request.resource.data.status != 'approved' ||
+                (uid in getAfter(roomPath(roomId)).data.memberIds &&
+                  getAfter(userPath(uid)).data.roomId == roomId))) ||
+             (request.resource.data.status == 'cancelled' &&
+              getAfter(userPath(uid)).data.roomId != null &&
+              getAfter(userPath(uid)).data.pendingRequestIds.size() == 0)))
+        );
+        allow delete: if isAdmin() ||
+          (verified() && get(roomPath(roomId)).data.memberIds.size() == 0);
+      }
+
+      match /voteSession/{sessionId} {
+        allow read: if isMember(roomId) || isAdmin();
+        allow create, update: if isMember(roomId) && sessionId == 'current';
+        allow delete: if isAdmin() || isMember(roomId) ||
+          (verified() && get(roomPath(roomId)).data.memberIds.size() == 0);
+        match /ballots/{voterUid} {
+          allow read: if isMember(roomId) || isAdmin();
+          allow create, update: if verified() && request.auth.uid == voterUid &&
+            isMember(roomId) &&
+            get(votePath(roomId)).data.status == 'active' &&
+            request.time < get(votePath(roomId)).data.endsAt &&
+            request.resource.data.candidateUid in get(roomPath(roomId)).data.memberIds;
+          allow delete: if isAdmin() || isMember(roomId) ||
+            (verified() && get(roomPath(roomId)).data.memberIds.size() == 0);
+        }
+      }
+
+      match /disband/{proposalId} {
+        allow read: if isMember(roomId) || isAdmin();
+        allow create: if isMember(roomId) && proposalId == 'current' &&
+          request.resource.data.approvedBy == [request.auth.uid] &&
+          request.resource.data.status == 'active';
+        allow update: if isMember(roomId) && proposalId == 'current' &&
+          request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['approvedBy', 'status']) &&
+          request.resource.data.approvedBy.hasAll(resource.data.approvedBy) &&
+          request.resource.data.approvedBy.removeAll(resource.data.approvedBy)
+            .hasOnly([request.auth.uid]) &&
+          (request.resource.data.status != 'done' ||
+            request.resource.data.approvedBy.hasAll(get(roomPath(roomId)).data.memberIds));
+        allow delete: if isAdmin() || isMember(roomId) ||
+          (verified() && get(roomPath(roomId)).data.memberIds.size() == 0);
+      }
+    }
+
+    match /rollover/{id} {
+      allow read, write: if isAdmin();
+    }
+    match /announcements/{id} {
+      allow read: if verified();
+      allow write: if isAdmin();
+    }
+    match /notificationJobs/{id} {
+      allow read, create: if isAdmin();
+      allow update, delete: if false;
+    }
+    match /crashDemoEvents/{id} {
+      allow create: if verified() && request.resource.data.uid == request.auth.uid;
+      allow read: if isAdmin();
+      allow update, delete: if false;
+    }
+    match /_smoke/{uid}/{document=**} {
+      allow read, write: if verified() && request.auth.uid == uid;
+    }
+  }
+}

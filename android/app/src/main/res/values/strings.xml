@@ -1,0 +1,4 @@
+<resources>
+    <string name="notification_channel_name">Thông báo TeamUp</string>
+    <string name="notification_channel_description">Thông báo về phòng và hoạt động nhóm</string>
+</resources>
