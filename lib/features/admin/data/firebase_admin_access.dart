@@ -31,11 +31,11 @@ class FirebaseAdminAuthGateway implements AdminAuthGateway {
 
 class FirestoreAdminDirectory implements AdminDirectory {
   @override
-  Future<bool> containsEmail(String emailLowercase) async {
+  Future<bool> containsIdentity(AdminIdentity identity) async {
     final snapshot = await FirebaseFirestore.instance
         .collection('admins')
-        .doc(emailLowercase)
+        .doc(identity.email.trim().toLowerCase())
         .get();
-    return snapshot.exists;
+    return snapshot.data()?['uid'] == identity.uid;
   }
 }

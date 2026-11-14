@@ -3,10 +3,15 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_strings.dart';
+import '../../../core/errors/app_error_mapper.dart';
+import '../../../core/motion/app_motion.dart';
 import '../../../core/notifications/notification_runtime.dart';
 import '../../../core/theme/app_tokens.dart';
+import '../../../core/theme/ocean_colors.dart';
+import '../../../shared/ocean/reef_section_card.dart';
 import '../../../shared/widgets/app_shell.dart';
 import '../../../shared/widgets/error_notice.dart';
+import '../../../shared/ocean/ocean_effects_control.dart';
 import '../../crash_demo/presentation/crash_demo_section.dart';
 import '../../team/data/firebase_team_repository.dart';
 import '../../team/domain/team_models.dart';
@@ -50,7 +55,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     } catch (error) {
       if (mounted)
         setState(() {
-          _error = error.toString();
+          _error = AppErrorMapper.message(error);
           _loaded = true;
         });
     }
@@ -76,7 +81,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       );
       if (mounted) context.go('/gate');
     } catch (error) {
-      if (mounted) setState(() => _error = error.toString());
+      if (mounted) setState(() => _error = AppErrorMapper.message(error));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -88,7 +93,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       await FirebaseAuth.instance.signOut();
       if (mounted) context.go('/login');
     } catch (error) {
-      if (mounted) setState(() => _error = error.toString());
+      if (mounted) setState(() => _error = AppErrorMapper.message(error));
     }
   }
 
@@ -107,8 +112,22 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(AppStrings.profileSetup,
-                        style: Theme.of(context).textTheme.headlineSmall),
+                    Row(
+                      children: [
+                        CircleAvatar(
+                          radius: AppSizes.icon,
+                          backgroundColor: Theme.of(context)
+                              .extension<OceanColors>()!
+                              .lagoon,
+                          child: const Icon(Icons.person_outline_rounded),
+                        ),
+                        const SizedBox(width: AppSpacing.s16),
+                        Expanded(
+                          child: Text(AppStrings.profileSetup,
+                              style: Theme.of(context).textTheme.headlineSmall),
+                        ),
+                      ],
+                    ),
                     const SizedBox(height: AppSpacing.s16),
                     Text(AppStrings.profileIntro,
                         style: Theme.of(context).textTheme.bodyLarge),
@@ -129,27 +148,34 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                           const InputDecoration(labelText: AppStrings.bio),
                     ),
                     const SizedBox(height: AppSpacing.s16),
-                    Text(AppStrings.skills,
-                        style: Theme.of(context).textTheme.titleLarge),
-                    const SizedBox(height: AppSpacing.s8),
-                    Wrap(
-                      spacing: AppSpacing.s8,
-                      runSpacing: AppSpacing.s8,
-                      children: [
-                        for (final skill in teamSkills)
-                          FilterChip(
-                            label: Text(skill),
-                            selected: _skills.contains(skill),
-                            showCheckmark: true,
-                            onSelected: (selected) => setState(() {
-                              if (selected) {
-                                _skills.add(skill);
-                              } else {
-                                _skills.remove(skill);
-                              }
-                            }),
+                    ReefSectionCard(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(AppStrings.skills,
+                              style: Theme.of(context).textTheme.titleLarge),
+                          const SizedBox(height: AppSpacing.s8),
+                          Wrap(
+                            spacing: AppSpacing.s8,
+                            runSpacing: AppSpacing.s8,
+                            children: [
+                              for (final skill in teamSkills)
+                                FilterChip(
+                                  label: Text(skill),
+                                  selected: _skills.contains(skill),
+                                  showCheckmark: true,
+                                  onSelected: (selected) => setState(() {
+                                    if (selected) {
+                                      _skills.add(skill);
+                                    } else {
+                                      _skills.remove(skill);
+                                    }
+                                  }),
+                                ),
+                            ],
                           ),
-                      ],
+                        ],
+                      ),
                     ),
                     if (_error != null) ...[
                       const SizedBox(height: AppSpacing.s16),
@@ -167,6 +193,22 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                         icon: const Icon(Icons.dns_outlined),
                         label: const Text(AppStrings.chooseServer),
                       ),
+                    const SizedBox(height: AppSpacing.s24),
+                    ReefSectionCard(
+                      child: Column(
+                        children: [
+                          const OceanEffectsControl(),
+                          AnimatedBuilder(
+                            animation: Motion.settings,
+                            builder: (context, _) => SwitchListTile(
+                              title: const Text(AppStrings.uiReduceMotion),
+                              value: Motion.settings.reduced,
+                              onChanged: Motion.settings.setReduced,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                     const SizedBox(height: AppSpacing.s24),
                     const CrashDemoSection(),
                     const SizedBox(height: AppSpacing.s24),

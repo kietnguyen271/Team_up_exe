@@ -12,7 +12,7 @@ abstract interface class AdminAuthGateway {
 }
 
 abstract interface class AdminDirectory {
-  Future<bool> containsEmail(String emailLowercase);
+  Future<bool> containsIdentity(AdminIdentity identity);
 }
 
 class AdminAccessService {
@@ -33,8 +33,7 @@ class AdminAccessService {
   }
 
   Future<bool> _check(AdminIdentity identity) async {
-    final allowed =
-        await directory.containsEmail(identity.email.trim().toLowerCase());
+    final allowed = await directory.containsIdentity(identity);
     if (!allowed) await auth.signOut();
     return allowed;
   }

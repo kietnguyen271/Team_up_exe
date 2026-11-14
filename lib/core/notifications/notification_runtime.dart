@@ -7,6 +7,8 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../constants/app_strings.dart';
+import '../errors/app_error_mapper.dart';
+import '../../features/team/domain/team_policy.dart';
 import 'firebase_notification_adapters.dart';
 import 'notification_service.dart';
 
@@ -51,7 +53,7 @@ class NotificationRuntime {
   }
 
   Future<void> _handleUserChange(User? user) async {
-    if (user == null || !user.emailVerified) {
+    if (user == null || !TeamPolicy.validEmail(user.email ?? '')) {
       await beforeSignOut();
       return;
     }
@@ -92,7 +94,7 @@ class NotificationRuntime {
     messenger.hideCurrentMaterialBanner();
     messenger.showMaterialBanner(MaterialBanner(
       leading: const Icon(Icons.error_outline),
-      content: Text(error.toString()),
+      content: Text(AppErrorMapper.message(error)),
       actions: [
         TextButton(
           onPressed: messenger.hideCurrentMaterialBanner,

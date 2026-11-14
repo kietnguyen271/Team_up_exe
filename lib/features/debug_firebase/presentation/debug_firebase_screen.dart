@@ -11,10 +11,12 @@ import '../../../core/constants/app_strings.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../core/notifications/notification_runtime.dart';
 import '../../../firebase_options.dart';
+import '../../../shared/ocean/reef_standalone_scaffold.dart';
 import '../../../shared/widgets/error_notice.dart';
 import '../../crash_demo/data/firebase_crash_demo.dart';
 import '../../crash_demo/device_info.dart';
 import '../../crash_demo/domain/crash_demo_event.dart';
+import '../../team/domain/team_policy.dart';
 
 class DebugFirebaseScreen extends StatefulWidget {
   const DebugFirebaseScreen({super.key, this.isWeb = false});
@@ -132,29 +134,13 @@ class _DebugFirebaseScreenState extends State<DebugFirebaseScreen> {
     final password = _passwordController.text;
     if (email.isEmpty) throw StateError(AppStrings.firebaseEmailRequired);
     if (password.isEmpty) throw StateError(AppStrings.firebasePasswordRequired);
+    TeamPolicy.validateRegistration(email, password);
     final credential =
         await FirebaseAuth.instance.createUserWithEmailAndPassword(
       email: email,
       password: password,
     );
     return _afterAuth(credential.user);
-  }
-
-  Future<String> _sendVerification() async {
-    _requireFirebase();
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) throw StateError(AppStrings.firebaseNotSignedIn);
-    await user.sendEmailVerification();
-    return AppStrings.firebaseSendVerification;
-  }
-
-  Future<String> _reloadVerification() async {
-    _requireFirebase();
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) throw StateError(AppStrings.firebaseNotSignedIn);
-    await user.reload();
-    return AppStrings.firebaseVerified(
-        FirebaseAuth.instance.currentUser?.emailVerified ?? false);
   }
 
   Future<String> _signIn() async {
@@ -395,10 +381,6 @@ class _DebugFirebaseScreenState extends State<DebugFirebaseScreen> {
               children: [
                 _actionButton(AppStrings.firebaseRegister,
                     Icons.person_add_outlined, _register),
-                _actionButton(AppStrings.firebaseSendVerification,
-                    Icons.mark_email_unread_outlined, _sendVerification),
-                _actionButton(AppStrings.firebaseReloadVerification,
-                    Icons.refresh, _reloadVerification),
                 _actionButton(AppStrings.firebaseSignIn, Icons.login, _signIn),
                 _actionButton(
                     AppStrings.firebaseSignOut, Icons.logout, _signOut),
@@ -560,17 +542,10 @@ class _DebugPageShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text(AppStrings.firebaseDebug)),
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: AppSizes.maxContentWidth),
-          child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.s24),
-            child: child,
-          ),
-        ),
-      ),
+    return ReefStandaloneScaffold(
+      title: AppStrings.firebaseDebug,
+      maxWidth: AppSizes.maxContentWidth,
+      child: child,
     );
   }
 }

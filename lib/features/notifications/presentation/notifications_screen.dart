@@ -4,14 +4,20 @@ import 'package:flutter/material.dart';
 
 import '../../../core/constants/app_strings.dart';
 import '../../../core/theme/app_tokens.dart';
+import '../../../core/theme/ocean_colors.dart';
 import '../../../shared/widgets/app_shell.dart';
 import '../../../shared/widgets/error_notice.dart';
 import '../../team/data/firebase_team_repository.dart';
 import '../../team/domain/team_models.dart';
 
-class NotificationsScreen extends StatelessWidget {
+class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
 
+  @override
+  State<NotificationsScreen> createState() => _NotificationsScreenState();
+}
+
+class _NotificationsScreenState extends State<NotificationsScreen> {
   @override
   Widget build(BuildContext context) {
     final uid = FirebaseAuth.instance.currentUser?.uid;
@@ -23,7 +29,10 @@ class NotificationsScreen extends StatelessWidget {
               stream: FirebaseTeamRepository().watchUser(uid),
               builder: (context, userSnapshot) {
                 if (userSnapshot.hasError) {
-                  return ErrorNotice(message: userSnapshot.error.toString());
+                  return ErrorNotice.fromError(
+                    error: userSnapshot.error!,
+                    onRetry: () => setState(() {}),
+                  );
                 }
                 if (!userSnapshot.hasData) {
                   return const Center(child: CircularProgressIndicator());
@@ -44,8 +53,10 @@ class NotificationsScreen extends StatelessWidget {
                             .snapshots(),
                         builder: (context, snapshot) {
                           if (snapshot.hasError) {
-                            return ErrorNotice(
-                                message: snapshot.error.toString());
+                            return ErrorNotice.fromError(
+                              error: snapshot.error!,
+                              onRetry: () => setState(() {}),
+                            );
                           }
                           if (!snapshot.hasData) {
                             return const Center(
@@ -64,9 +75,18 @@ class NotificationsScreen extends StatelessWidget {
                               for (final item in items)
                                 Card(
                                   child: ListTile(
-                                    leading: const Icon(Icons.notifications_outlined),
-                                    title: Text(item.data()['title'] as String? ?? ''),
-                                    subtitle: Text(item.data()['body'] as String? ?? ''),
+                                    leading: CircleAvatar(
+                                      backgroundColor: Theme.of(context)
+                                          .extension<OceanColors>()!
+                                          .lagoon,
+                                      child: const Icon(
+                                        Icons.notifications_outlined,
+                                      ),
+                                    ),
+                                    title: Text(
+                                        item.data()['title'] as String? ?? ''),
+                                    subtitle: Text(
+                                        item.data()['body'] as String? ?? ''),
                                   ),
                                 ),
                             ],

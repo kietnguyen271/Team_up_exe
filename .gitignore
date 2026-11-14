@@ -18,6 +18,8 @@ windows/flutter/generated_plugins.cmake
 *.log
 .env
 .env.*
+.firebase-emulator-data/
+.firebase-emulator-rollover-backup/
 *.pem
 *.p12
 *.jks

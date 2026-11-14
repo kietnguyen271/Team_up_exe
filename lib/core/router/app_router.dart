@@ -7,15 +7,17 @@ import '../../features/admin/data/firebase_admin_access.dart';
 import '../../features/admin/domain/admin_access_service.dart';
 import '../../features/admin/presentation/admin_home_screen.dart';
 import '../../features/auth/presentation/auth_form_screen.dart';
-import '../../features/auth/presentation/verify_email_screen.dart';
 import '../../features/debug_firebase/presentation/debug_firebase_screen.dart';
 import '../../features/home/presentation/home_screen.dart';
 import '../../features/home/presentation/room_landing_screen.dart';
 import '../../features/notifications/presentation/notifications_screen.dart';
 import '../../features/profile/presentation/profile_setup_screen.dart';
+import '../../features/ui_gallery/presentation/ui_gallery_screen.dart';
+import '../../features/ui_gallery/presentation/ocean_gallery_screen.dart';
 import '../../features/servers/presentation/server_picker_screen.dart';
 import '../../shared/widgets/generic_error_screen.dart';
 import '../../shared/widgets/splash_screen.dart';
+import '../../shared/ocean/reef_standalone_scaffold.dart';
 import '../constants/app_strings.dart';
 import '../notifications/notification_runtime.dart';
 import '../theme/app_tokens.dart';
@@ -26,7 +28,7 @@ abstract final class AppRouter {
 
   static String routeForStage(SessionStage stage) => switch (stage) {
         SessionStage.signedOut => '/login',
-        SessionStage.unverified => '/verify-email',
+        SessionStage.invalidEmail => '/invalid-email',
         SessionStage.needsProfile => '/profile-setup',
         SessionStage.needsServer => '/servers',
         SessionStage.student => '/home',
@@ -45,13 +47,15 @@ abstract final class AppRouter {
       redirect: (context, state) async {
         final path = state.uri.path;
         if (isWeb) return path == '/unsupported' ? null : '/unsupported';
-        if (kDebugMode && path == '/debug-firebase') return null;
+        if (kDebugMode &&
+            (path == '/debug-firebase' || path.startsWith('/ui-gallery')))
+          return null;
         final stage = await guard.resolve();
         if (path == '/login' || path == '/register') {
           return stage == SessionStage.signedOut ? null : '/gate';
         }
-        if (path == '/verify-email') {
-          return stage == SessionStage.unverified ? null : '/gate';
+        if (path == '/invalid-email') {
+          return stage == SessionStage.invalidEmail ? null : '/gate';
         }
         if (path == '/gate') {
           return routeForStage(stage);
@@ -85,7 +89,8 @@ abstract final class AppRouter {
       errorBuilder: (context, state) =>
           GenericErrorScreen(onRetry: () => context.go('/gate')),
       routes: [
-        GoRoute(path: '/gate', builder: (context, state) => const SplashScreen()),
+        GoRoute(
+            path: '/gate', builder: (context, state) => const SplashScreen()),
         GoRoute(
           path: '/unsupported',
           builder: (context, state) => const Scaffold(
@@ -94,15 +99,27 @@ abstract final class AppRouter {
         ),
         GoRoute(
           path: '/login',
-          builder: (context, state) => const AuthFormScreen(isRegistration: false),
+          builder: (context, state) =>
+              const AuthFormScreen(isRegistration: false),
         ),
         GoRoute(
           path: '/register',
-          builder: (context, state) => const AuthFormScreen(isRegistration: true),
+          builder: (context, state) =>
+              const AuthFormScreen(isRegistration: true),
         ),
         GoRoute(
-          path: '/verify-email',
-          builder: (context, state) => const VerifyEmailScreen(),
+          path: '/invalid-email',
+          builder: (context, state) => ReefStandaloneScaffold(
+            title: AppStrings.invalidSchoolEmail,
+            child: FilledButton(
+              onPressed: () async {
+                await NotificationRuntime.instance.beforeSignOut();
+                await FirebaseAuth.instance.signOut();
+                if (context.mounted) context.go('/login');
+              },
+              child: const Text(AppStrings.signOut),
+            ),
+          ),
         ),
         GoRoute(
           path: '/profile-setup',
@@ -132,25 +149,23 @@ abstract final class AppRouter {
         ),
         GoRoute(
           path: '/completed',
-          builder: (context, _) => Scaffold(
-            appBar: AppBar(title: const Text(AppStrings.completed)),
-            body: Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(AppStrings.completedIntro,
-                      style: Theme.of(context).textTheme.bodyLarge),
-                  const SizedBox(height: AppSpacing.s24),
-                  FilledButton(
-                    onPressed: () async {
-                      await NotificationRuntime.instance.beforeSignOut();
-                      await FirebaseAuth.instance.signOut();
-                      if (context.mounted) context.go('/login');
-                    },
-                    child: const Text(AppStrings.signOut),
-                  ),
-                ],
-              ),
+          builder: (context, _) => ReefStandaloneScaffold(
+            title: AppStrings.completed,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(AppStrings.completedIntro,
+                    style: Theme.of(context).textTheme.bodyLarge),
+                const SizedBox(height: AppSpacing.s24),
+                FilledButton(
+                  onPressed: () async {
+                    await NotificationRuntime.instance.beforeSignOut();
+                    await FirebaseAuth.instance.signOut();
+                    if (context.mounted) context.go('/login');
+                  },
+                  child: const Text(AppStrings.signOut),
+                ),
+              ],
             ),
           ),
         ),
@@ -158,6 +173,16 @@ abstract final class AppRouter {
           GoRoute(
             path: '/debug-firebase',
             builder: (context, state) => const DebugFirebaseScreen(),
+          ),
+        if (kDebugMode)
+          GoRoute(
+            path: '/ui-gallery',
+            builder: (context, state) => const UiGalleryScreen(),
+          ),
+        if (kDebugMode)
+          GoRoute(
+            path: '/ui-gallery/ocean',
+            builder: (context, state) => const OceanGalleryScreen(),
           ),
       ],
     );

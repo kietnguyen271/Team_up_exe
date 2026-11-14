@@ -1,11 +1,11 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 
 import '../../core/constants/app_strings.dart';
+import '../../core/motion/reef_room_painter.dart';
 import '../../core/theme/app_tokens.dart';
+import '../../core/theme/ocean_colors.dart';
 
-/// A square room tile with one visible chair per place at the table.
+/// Count-only room card shared by the student and admin room grids.
 class RoomTableCard extends StatelessWidget {
   const RoomTableCard({
     super.key,
@@ -28,7 +28,7 @@ class RoomTableCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
+    final ocean = Theme.of(context).extension<OceanColors>()!;
     final textTheme = Theme.of(context).textTheme;
     return Semantics(
       button: true,
@@ -40,63 +40,94 @@ class RoomTableCard extends StatelessWidget {
         isMine: isMine,
       ),
       child: Card(
+        margin: EdgeInsets.zero,
+        color: ocean.seaGlass,
+        surfaceTintColor: AppPalette.transparent,
+        elevation: AppElevation.level1,
+        shadowColor: ocean.deepWater.withValues(alpha: AppSizes.glowOpacity),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppRadius.r12),
+          borderRadius: BorderRadius.circular(AppRadius.r20),
           side: BorderSide(
-            color: isMine ? scheme.primary : scheme.outlineVariant,
+            color: isMine ? ocean.teal : ocean.foam,
             width: isMine ? AppSizes.focusOutlineWidth : AppSizes.outlineWidth,
           ),
         ),
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(AppRadius.r12),
+          borderRadius: BorderRadius.circular(AppRadius.r20),
           child: Padding(
             padding: const EdgeInsets.all(AppSpacing.s8),
             child: Column(
               children: [
                 Row(
                   children: [
-                    if (isMine) ...[
-                      Icon(Icons.star,
-                          size: AppSizes.icon, color: scheme.primary),
-                      const SizedBox(width: AppSpacing.s4),
-                    ],
                     Expanded(
                       child: Text(
                         name,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: textTheme.titleLarge,
+                        style: textTheme.titleLarge?.copyWith(
+                          color: ocean.deepNavy,
+                        ),
                       ),
                     ),
                     if (action != null) action!,
                   ],
                 ),
+                if (isMine)
+                  Row(
+                    children: [
+                      Icon(Icons.star_rounded,
+                          color: ocean.teal, size: AppSizes.avatarBadge),
+                      const SizedBox(width: AppSpacing.s4),
+                      Flexible(
+                        child: Text(
+                          AppStrings.yourRoom,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: textTheme.labelLarge?.copyWith(
+                            color: ocean.deepNavy,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 Expanded(
-                  child: CustomPaint(
-                    painter: _RoomSeatsPainter(
-                      capacity: capacity,
-                      members: members,
-                      scheme: scheme,
-                    ),
-                    child: Center(
-                      child: Text(
-                        '$members/$capacity',
-                        style: textTheme.labelLarge?.copyWith(
-                          color: scheme.primary,
+                  child: RepaintBoundary(
+                    child: CustomPaint(
+                      painter: ReefRoomPainter(
+                        ocean: ocean,
+                        capacity: capacity,
+                        members: members,
+                        isMine: isMine,
+                        locked: status == AppStrings.roomLocked,
+                      ),
+                      child: Center(
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            color: ocean.foam.withValues(
+                              alpha: AppSizes.glassOpacity,
+                            ),
+                            borderRadius: BorderRadius.circular(AppRadius.r12),
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: AppSpacing.s4,
+                            ),
+                            child: Text(
+                              '$members/$capacity',
+                              style: textTheme.labelLarge?.copyWith(
+                                color: ocean.deepNavy,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
                         ),
                       ),
                     ),
                   ),
                 ),
-                Text(
-                  status,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: textTheme.bodyMedium?.copyWith(
-                    color: scheme.onSurfaceVariant,
-                  ),
-                ),
+                _RoomStatusPill(status: status),
               ],
             ),
           ),
@@ -106,95 +137,70 @@ class RoomTableCard extends StatelessWidget {
   }
 }
 
-class _RoomSeatsPainter extends CustomPainter {
-  const _RoomSeatsPainter({
-    required this.capacity,
-    required this.members,
-    required this.scheme,
-  });
+class _RoomStatusPill extends StatelessWidget {
+  const _RoomStatusPill({required this.status});
 
-  final int capacity;
-  final int members;
-  final ColorScheme scheme;
+  final String status;
 
   @override
-  void paint(Canvas canvas, Size size) {
-    final side = math.min(size.width, size.height);
-    final center = Offset(size.width / 2, size.height / 2);
-    final tableSide = side * AppSizes.roomTableScale;
-    final tableRect = Rect.fromCenter(
-      center: center,
-      width: tableSide,
-      height: tableSide,
-    );
-    final table = RRect.fromRectAndRadius(
-      tableRect,
-      const Radius.circular(AppRadius.r12),
-    );
-    canvas.drawRRect(table, Paint()..color = scheme.surfaceContainer);
-    canvas.drawRRect(
-      table,
-      Paint()
-        ..color = scheme.outline
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = AppSizes.outlineWidth,
-    );
-
-    if (capacity <= 0) return;
-    final orbit = side * AppSizes.roomSeatOrbitScale;
-    final circumference = 2 * math.pi * orbit;
-    final seatWidth = math.min(
-      AppSizes.icon,
-      math.min(
-        side * AppSizes.roomSeatWidthScale,
-        circumference / capacity * AppSizes.roomSeatSpacingRatio,
+  Widget build(BuildContext context) {
+    final ocean = Theme.of(context).extension<OceanColors>()!;
+    final scheme = Theme.of(context).colorScheme;
+    final (icon, foreground, background) = switch (status) {
+      AppStrings.roomOpen => (
+          Icons.circle,
+          ocean.kelp,
+          AppPalette.successContainer
+        ),
+      AppStrings.roomFull => (
+          Icons.groups_rounded,
+          ocean.warning,
+          AppPalette.warningContainer
+        ),
+      AppStrings.roomLocked => (
+          Icons.lock_rounded,
+          scheme.onSurfaceVariant,
+          AppPalette.surfaceContainer
+        ),
+      AppStrings.roomEmpty => (
+          Icons.bubble_chart_outlined,
+          ocean.teal,
+          ocean.foam
+        ),
+      _ => (Icons.info_outline, scheme.onSurfaceVariant, ocean.foam),
+    };
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(AppRadius.r28),
+        border: Border.all(
+          color: foreground.withValues(alpha: AppSizes.reefBorderOpacity),
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.s8,
+          vertical: AppSpacing.s4,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: foreground, size: AppSizes.avatarBadge),
+            const SizedBox(width: AppSpacing.s4),
+            Flexible(
+              child: Text(
+                status,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context)
+                    .textTheme
+                    .labelLarge
+                    ?.copyWith(color: foreground),
+              ),
+            ),
+          ],
+        ),
       ),
     );
-    final seatHeight = seatWidth * AppSizes.roomSeatHeightRatio;
-    final occupiedCount = members.clamp(0, capacity);
-    for (var index = 0; index < capacity; index++) {
-      final angle = -math.pi / 2 + 2 * math.pi * index / capacity;
-      final occupied = index < occupiedCount;
-      final chairPaint = Paint()
-        ..color = occupied ? scheme.primary : scheme.surface;
-      final outlinePaint = Paint()
-        ..color = occupied ? scheme.primary : scheme.outline
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = AppSizes.outlineWidth;
-      canvas.save();
-      canvas.translate(
-        center.dx + math.cos(angle) * orbit,
-        center.dy + math.sin(angle) * orbit,
-      );
-      canvas.rotate(angle + math.pi / 2);
-      final seat = RRect.fromRectAndRadius(
-        Rect.fromCenter(
-          center: Offset.zero,
-          width: seatWidth,
-          height: seatHeight,
-        ),
-        const Radius.circular(AppSpacing.s4),
-      );
-      final back = RRect.fromRectAndRadius(
-        Rect.fromLTWH(
-          -seatWidth / 2,
-          -seatHeight,
-          seatWidth,
-          seatHeight * AppSizes.roomSeatBackHeightRatio,
-        ),
-        const Radius.circular(AppSpacing.s4),
-      );
-      canvas.drawRRect(seat, chairPaint);
-      canvas.drawRRect(seat, outlinePaint);
-      canvas.drawRRect(back, chairPaint);
-      canvas.drawRRect(back, outlinePaint);
-      canvas.restore();
-    }
   }
-
-  @override
-  bool shouldRepaint(covariant _RoomSeatsPainter oldDelegate) =>
-      capacity != oldDelegate.capacity ||
-      members != oldDelegate.members ||
-      scheme != oldDelegate.scheme;
 }

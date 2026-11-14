@@ -5,7 +5,11 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_strings.dart';
+import '../../../core/errors/app_error_mapper.dart';
+import '../../../core/motion/reef_room_painter.dart';
 import '../../../core/theme/app_tokens.dart';
+import '../../../core/theme/ocean_colors.dart';
+import '../../../shared/ocean/reef_section_card.dart';
 import '../../../shared/widgets/app_shell.dart';
 import '../../../shared/widgets/error_notice.dart';
 import '../../team/data/firebase_team_repository.dart';
@@ -69,7 +73,7 @@ class _RoomLandingScreenState extends State<RoomLandingScreen> {
     try {
       await operation();
     } catch (error) {
-      if (mounted) setState(() => _error = error.toString());
+      if (mounted) setState(() => _error = AppErrorMapper.message(error));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -165,7 +169,10 @@ class _RoomLandingScreenState extends State<RoomLandingScreen> {
         stream: _repository.watchRoom(widget.roomId),
         builder: (context, roomSnapshot) {
           if (roomSnapshot.hasError) {
-            return ErrorNotice(message: roomSnapshot.error.toString());
+            return ErrorNotice.fromError(
+              error: roomSnapshot.error!,
+              onRetry: () => setState(() {}),
+            );
           }
           if (!roomSnapshot.hasData) {
             return const Center(child: CircularProgressIndicator());
@@ -176,19 +183,31 @@ class _RoomLandingScreenState extends State<RoomLandingScreen> {
             stream: _repository.watchUser(uid),
             builder: (context, userSnapshot) {
               if (userSnapshot.hasError) {
-                return ErrorNotice(message: userSnapshot.error.toString());
+                return ErrorNotice.fromError(
+                  error: userSnapshot.error!,
+                  onRetry: () => setState(() {}),
+                );
               }
               if (!userSnapshot.hasData) {
                 return const Center(child: CircularProgressIndicator());
               }
               final user = userSnapshot.data;
               if (user == null) return const Text(AppStrings.profileMissing);
+              if (!TeamPolicy.canSeeRoom(user, room)) {
+                return const Center(
+                  child: ErrorNotice(message: AppStrings.roomIsLocked),
+                );
+              }
               return FutureBuilder<List<TeamUser>>(
                 future: _loadMembers(room),
                 builder: (context, membersSnapshot) {
                   if (membersSnapshot.hasError) {
-                    return ErrorNotice(
-                        message: membersSnapshot.error.toString());
+                    return ErrorNotice.fromError(
+                      error: membersSnapshot.error!,
+                      onRetry: () => setState(() {
+                        _membersKey = null;
+                      }),
+                    );
                   }
                   if (!membersSnapshot.hasData) {
                     return const Center(child: CircularProgressIndicator());
@@ -215,11 +234,39 @@ class _RoomLandingScreenState extends State<RoomLandingScreen> {
             icon: const Icon(Icons.arrow_back),
             label: const Text(AppStrings.rooms),
           ),
-          Text(room.name, style: Theme.of(context).textTheme.headlineSmall),
-          const SizedBox(height: AppSpacing.s8),
-          Text(
-              '${members.length}/${room.capacity} · ${room.locked ? AppStrings.roomLocked : AppStrings.roomOpen}',
-              style: Theme.of(context).textTheme.bodyLarge),
+          if (mine) ...[
+            ReefSectionCard(child: _requestsSection(user.id, room)),
+            const SizedBox(height: AppSpacing.s16),
+          ],
+          ReefSectionCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(room.name,
+                    style: Theme.of(context).textTheme.headlineSmall),
+                const SizedBox(height: AppSpacing.s8),
+                Text(
+                  '${members.length}/${room.capacity} · ${room.locked ? AppStrings.roomLocked : room.isFull ? AppStrings.roomFull : room.isEmpty ? AppStrings.roomEmpty : AppStrings.roomOpen}',
+                  style: Theme.of(context).textTheme.bodyLarge,
+                ),
+                const SizedBox(height: AppSpacing.s8),
+                Center(
+                  child: SizedBox.square(
+                    dimension: AppSizes.roomTileMin,
+                    child: CustomPaint(
+                      painter: ReefRoomPainter(
+                        ocean: Theme.of(context).extension<OceanColors>()!,
+                        capacity: room.capacity,
+                        members: members.length,
+                        isMine: mine,
+                        locked: room.locked,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
           if (_error != null) ...[
             const SizedBox(height: AppSpacing.s16),
             ErrorNotice(message: _error!),
@@ -229,7 +276,7 @@ class _RoomLandingScreenState extends State<RoomLandingScreen> {
             spacing: AppSpacing.s8,
             runSpacing: AppSpacing.s8,
             children: [
-              if (!mine && user.roomId == null)
+              if (!mine && user.roomId == null && !room.isFull)
                 StreamBuilder<TeamJoinRequest?>(
                   stream: _repository.watchOwnRequest(room.id, user.id),
                   builder: (context, snapshot) {
@@ -338,11 +385,9 @@ class _RoomLandingScreenState extends State<RoomLandingScreen> {
           ],
           if (mine) ...[
             const SizedBox(height: AppSpacing.s24),
-            _voteSection(user.id, room, members),
+            ReefSectionCard(child: _voteSection(user.id, room, members)),
             const SizedBox(height: AppSpacing.s24),
-            _disbandSection(user.id, room),
-            const SizedBox(height: AppSpacing.s24),
-            _requestsSection(user.id, room),
+            ReefSectionCard(child: _disbandSection(user.id, room)),
           ],
         ],
       ),
@@ -354,7 +399,10 @@ class _RoomLandingScreenState extends State<RoomLandingScreen> {
         stream: _repository.watchVote(room.id),
         builder: (context, snapshot) {
           if (snapshot.hasError) {
-            return ErrorNotice(message: snapshot.error.toString());
+            return ErrorNotice.fromError(
+              error: snapshot.error!,
+              onRetry: () => setState(() {}),
+            );
           }
           final vote = snapshot.data;
           if (vote != null &&
@@ -409,7 +457,10 @@ class _RoomLandingScreenState extends State<RoomLandingScreen> {
         stream: _repository.watchDisband(room.id),
         builder: (context, snapshot) {
           if (snapshot.hasError) {
-            return ErrorNotice(message: snapshot.error.toString());
+            return ErrorNotice.fromError(
+              error: snapshot.error!,
+              onRetry: () => setState(() {}),
+            );
           }
           final proposal = snapshot.data;
           final active = proposal != null &&
@@ -451,7 +502,10 @@ class _RoomLandingScreenState extends State<RoomLandingScreen> {
         stream: _repository.watchRequests(room.id),
         builder: (context, snapshot) {
           if (snapshot.hasError) {
-            return ErrorNotice(message: snapshot.error.toString());
+            return ErrorNotice.fromError(
+              error: snapshot.error!,
+              onRetry: () => setState(() {}),
+            );
           }
           if (!snapshot.hasData) {
             return const Center(child: CircularProgressIndicator());
@@ -470,7 +524,9 @@ class _RoomLandingScreenState extends State<RoomLandingScreen> {
                 unawaited(_repository
                     .expireRequest(room.id, request.uid)
                     .catchError((Object error) {
-                  if (mounted) setState(() => _error = error.toString());
+                  if (mounted) {
+                    setState(() => _error = AppErrorMapper.message(error));
+                  }
                 }));
               }
             });
@@ -480,37 +536,48 @@ class _RoomLandingScreenState extends State<RoomLandingScreen> {
             children: [
               Text(AppStrings.joinRequests,
                   style: Theme.of(context).textTheme.titleLarge),
+              Text(AppStrings.pendingJoinRequests(pending.length)),
               if (pending.isEmpty) const Text(AppStrings.noJoinRequests),
               for (final request in pending)
                 Card(
-                  child: ListTile(
-                    leading: const Icon(Icons.pending_actions_outlined),
-                    title: FutureBuilder<TeamUser?>(
-                      future: _requester(request.uid),
-                      builder: (context, userSnapshot) =>
-                          Text(userSnapshot.data?.name ?? request.uid),
-                    ),
-                    subtitle: Text(request.message.isEmpty
-                        ? AppStrings.requestPending
-                        : '${AppStrings.requestPending} · ${request.message}'),
-                    trailing: Wrap(
-                      spacing: AppSpacing.s8,
+                  child: Padding(
+                    padding: const EdgeInsets.all(AppSpacing.s16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        IconButton(
-                          tooltip: AppStrings.approve,
-                          onPressed: _busy
-                              ? null
-                              : () => _run(() => _repository.decideRequest(
-                                  uid, room.id, request.uid, true)),
-                          icon: const Icon(Icons.check),
+                        FutureBuilder<TeamUser?>(
+                          future: _requester(request.uid),
+                          builder: (context, userSnapshot) => Text(
+                            userSnapshot.data?.name ?? request.uid,
+                            style: Theme.of(context).textTheme.titleMedium,
+                          ),
                         ),
-                        IconButton(
-                          tooltip: AppStrings.reject,
-                          onPressed: _busy
-                              ? null
-                              : () => _run(() => _repository.decideRequest(
-                                  uid, room.id, request.uid, false)),
-                          icon: const Icon(Icons.close),
+                        const SizedBox(height: AppSpacing.s8),
+                        Text(request.message.isEmpty
+                            ? AppStrings.requestPending
+                            : '${AppStrings.requestPending} · ${request.message}'),
+                        const SizedBox(height: AppSpacing.s16),
+                        Wrap(
+                          spacing: AppSpacing.s8,
+                          runSpacing: AppSpacing.s8,
+                          children: [
+                            FilledButton.icon(
+                              onPressed: _busy
+                                  ? null
+                                  : () => _run(() => _repository.decideRequest(
+                                      uid, room.id, request.uid, true)),
+                              icon: const Icon(Icons.check),
+                              label: const Text(AppStrings.approve),
+                            ),
+                            OutlinedButton.icon(
+                              onPressed: _busy
+                                  ? null
+                                  : () => _run(() => _repository.decideRequest(
+                                      uid, room.id, request.uid, false)),
+                              icon: const Icon(Icons.close),
+                              label: const Text(AppStrings.reject),
+                            ),
+                          ],
                         ),
                       ],
                     ),

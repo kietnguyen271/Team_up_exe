@@ -1,14 +1,22 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    function verified() {
-      return request.auth != null && request.auth.token.email_verified == true;
+    function signedIn() {
+      return request.auth != null && request.auth.token.email is string;
+    }
+    function fptEmail() {
+      return signedIn() &&
+        request.auth.token.email.lower().matches('^[^@]+@fpt[.]edu[.]vn$');
     }
     function adminPath() {
       return /databases/$(database)/documents/admins/$(request.auth.token.email.lower());
     }
     function isAdmin() {
-      return verified() && exists(adminPath());
+      return signedIn() && exists(adminPath()) &&
+        get(adminPath()).data.uid == request.auth.uid;
+    }
+    function eligible() {
+      return fptEmail() || isAdmin();
     }
     function userPath(uid) {
       return /databases/$(database)/documents/users/$(uid);
@@ -26,21 +34,21 @@ service cloud.firestore {
       return /databases/$(database)/documents/rooms/$(roomId)/disband/current;
     }
     function isMember(roomId) {
-      return verified() && request.auth.uid in get(roomPath(roomId)).data.memberIds;
+      return eligible() && request.auth.uid in get(roomPath(roomId)).data.memberIds;
     }
     function isLeader(roomId) {
-      return verified() && get(roomPath(roomId)).data.leaderId == request.auth.uid;
+      return eligible() && get(roomPath(roomId)).data.leaderId == request.auth.uid;
     }
 
     match /admins/{email} {
-      allow get: if verified() && request.auth.token.email.lower() == email;
+      allow get: if signedIn() && request.auth.token.email.lower() == email;
       allow list: if isAdmin();
       allow write: if false;
     }
 
     match /users/{uid} {
-      allow read: if verified();
-      allow create: if verified() && request.auth.uid == uid &&
+      allow read: if eligible();
+      allow create: if eligible() && request.auth.uid == uid &&
         request.resource.data.email == request.auth.token.email.lower() &&
         request.resource.data.status == 'active' &&
         request.resource.data.name is string &&
@@ -54,7 +62,7 @@ service cloud.firestore {
         request.resource.data.roomId == null &&
         request.resource.data.pendingRequestIds == [];
       allow update: if isAdmin() ||
-        (verified() && request.auth.uid == uid &&
+        (eligible() && request.auth.uid == uid &&
           request.resource.data.diff(resource.data).affectedKeys()
             .hasOnly(['name', 'bio', 'skills', 'serverId', 'roomId', 'pendingRequestIds']) &&
           request.resource.data.status == resource.data.status &&
@@ -75,7 +83,7 @@ service cloud.firestore {
             (request.resource.data.roomId == null &&
               !(uid in getAfter(roomPath(resource.data.roomId)).data.memberIds))
           )) ||
-        (verified() && request.resource.data.roomId == resource.data.roomId &&
+        (eligible() && request.resource.data.roomId == resource.data.roomId &&
           request.resource.data.diff(resource.data).affectedKeys()
             .hasOnly(['pendingRequestIds']) &&
           resource.data.pendingRequestIds
@@ -86,12 +94,12 @@ service cloud.firestore {
             resource.data.pendingRequestIds
               .removeAll(request.resource.data.pendingRequestIds)[0], uid
           )).data.status in ['rejected', 'expired']) ||
-        (verified() && request.resource.data.roomId != null &&
+        (eligible() && request.resource.data.roomId != null &&
           isMember(request.resource.data.roomId) &&
           request.resource.data.diff(resource.data).affectedKeys()
             .hasOnly(['roomId', 'serverId', 'pendingRequestIds']) &&
           uid in getAfter(roomPath(request.resource.data.roomId)).data.memberIds) ||
-        (verified() && resource.data.roomId != null &&
+        (eligible() && resource.data.roomId != null &&
           isMember(resource.data.roomId) &&
           request.resource.data.roomId == null &&
           request.resource.data.diff(resource.data).affectedKeys()
@@ -101,17 +109,17 @@ service cloud.firestore {
       allow delete: if false;
 
       match /fcmTokens/{token} {
-        allow read, write: if verified() && request.auth.uid == uid;
+        allow read, write: if eligible() && request.auth.uid == uid;
       }
     }
 
     match /servers/{serverId} {
-      allow read: if verified();
+      allow read: if eligible();
       allow write: if isAdmin();
     }
 
     match /rooms/{roomId} {
-      allow read: if verified();
+      allow read: if eligible();
       allow create, delete: if isAdmin();
       allow update: if isAdmin() ||
         (isMember(roomId) &&
@@ -124,7 +132,7 @@ service cloud.firestore {
           request.resource.data.diff(resource.data).affectedKeys()
             .hasOnly(['leaderId']) &&
           request.resource.data.leaderId == getAfter(votePath(roomId)).data.winnerUid) ||
-        (verified() &&
+        (eligible() &&
           request.resource.data.diff(resource.data).affectedKeys()
             .hasOnly(['memberIds']) &&
           resource.data.locked == false &&
@@ -165,9 +173,9 @@ service cloud.firestore {
             .hasOnly(['memberIds', 'leaderId', 'locked', 'name', 'nameLower']));
 
       match /joinRequests/{uid} {
-        allow read: if verified() &&
-          (request.auth.uid == uid || isMember(roomId));
-        allow create: if verified() && request.auth.uid == uid &&
+        allow read: if isAdmin() || (eligible() &&
+          (request.auth.uid == uid || isMember(roomId)));
+        allow create: if eligible() && request.auth.uid == uid &&
           request.resource.data.status == 'pending' &&
           request.resource.data.message is string &&
           request.resource.data.message.size() <= 280 &&
@@ -181,7 +189,7 @@ service cloud.firestore {
           get(roomPath(roomId)).data.locked == false &&
           get(roomPath(roomId)).data.memberIds.size() > 0 &&
           get(roomPath(roomId)).data.memberIds.size() < get(roomPath(roomId)).data.capacity;
-        allow update: if verified() && (
+        allow update: if eligible() && (
           (request.auth.uid == uid &&
             (resource.data.status in ['cancelled', 'rejected', 'expired'] ||
               resource.data.expiresAt <= request.time) &&
@@ -213,23 +221,23 @@ service cloud.firestore {
               getAfter(userPath(uid)).data.pendingRequestIds.size() == 0)))
         );
         allow delete: if isAdmin() ||
-          (verified() && get(roomPath(roomId)).data.memberIds.size() == 0);
+          (eligible() && get(roomPath(roomId)).data.memberIds.size() == 0);
       }
 
       match /voteSession/{sessionId} {
         allow read: if isMember(roomId) || isAdmin();
         allow create, update: if isMember(roomId) && sessionId == 'current';
         allow delete: if isAdmin() || isMember(roomId) ||
-          (verified() && get(roomPath(roomId)).data.memberIds.size() == 0);
+          (eligible() && get(roomPath(roomId)).data.memberIds.size() == 0);
         match /ballots/{voterUid} {
           allow read: if isMember(roomId) || isAdmin();
-          allow create, update: if verified() && request.auth.uid == voterUid &&
+          allow create, update: if eligible() && request.auth.uid == voterUid &&
             isMember(roomId) &&
             get(votePath(roomId)).data.status == 'active' &&
             request.time < get(votePath(roomId)).data.endsAt &&
             request.resource.data.candidateUid in get(roomPath(roomId)).data.memberIds;
           allow delete: if isAdmin() || isMember(roomId) ||
-            (verified() && get(roomPath(roomId)).data.memberIds.size() == 0);
+            (eligible() && get(roomPath(roomId)).data.memberIds.size() == 0);
         }
       }
 
@@ -247,7 +255,7 @@ service cloud.firestore {
           (request.resource.data.status != 'done' ||
             request.resource.data.approvedBy.hasAll(get(roomPath(roomId)).data.memberIds));
         allow delete: if isAdmin() || isMember(roomId) ||
-          (verified() && get(roomPath(roomId)).data.memberIds.size() == 0);
+          (eligible() && get(roomPath(roomId)).data.memberIds.size() == 0);
       }
     }
 
@@ -255,7 +263,7 @@ service cloud.firestore {
       allow read, write: if isAdmin();
     }
     match /announcements/{id} {
-      allow read: if verified();
+      allow read: if eligible();
       allow write: if isAdmin();
     }
     match /notificationJobs/{id} {
@@ -263,12 +271,12 @@ service cloud.firestore {
       allow update, delete: if false;
     }
     match /crashDemoEvents/{id} {
-      allow create: if verified() && request.resource.data.uid == request.auth.uid;
+      allow create: if eligible() && request.resource.data.uid == request.auth.uid;
       allow read: if isAdmin();
       allow update, delete: if false;
     }
     match /_smoke/{uid}/{document=**} {
-      allow read, write: if verified() && request.auth.uid == uid;
+      allow read, write: if eligible() && request.auth.uid == uid;
     }
   }
 }

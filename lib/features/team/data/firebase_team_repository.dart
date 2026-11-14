@@ -25,10 +25,12 @@ class FirebaseTeamRepository implements TeamRepository {
   DocumentReference<Map<String, dynamic>> _disband(String roomId) =>
       _room(roomId).collection('disband').doc('current');
 
-  void _requireVerified(String uid) {
+  void _requireSignedInStudent(String uid) {
     final current = auth.currentUser;
-    if (current == null || current.uid != uid || !current.emailVerified) {
-      throw const TeamPolicyException(AppStrings.verifyEmailFirst);
+    if (current == null ||
+        current.uid != uid ||
+        !TeamPolicy.validEmail(current.email ?? '')) {
+      throw const TeamPolicyException(AppStrings.invalidSchoolEmail);
     }
   }
 
@@ -147,7 +149,7 @@ class FirebaseTeamRepository implements TeamRepository {
   @override
   Future<void> saveProfile(String uid, String email, String name, String bio,
       List<String> skills) async {
-    _requireVerified(uid);
+    _requireSignedInStudent(uid);
     TeamPolicy.validateProfile(name, bio, skills);
     await db.runTransaction((tx) async {
       final ref = _user(uid);
@@ -176,7 +178,7 @@ class FirebaseTeamRepository implements TeamRepository {
 
   @override
   Future<void> chooseServer(String uid, String serverId) async {
-    _requireVerified(uid);
+    _requireSignedInStudent(uid);
     if (serverId != 'exe1' && serverId != 'exe2') {
       throw const TeamPolicyException(AppStrings.invalidServer);
     }
@@ -197,7 +199,7 @@ class FirebaseTeamRepository implements TeamRepository {
   @override
   Future<String> joinOrRequest(String uid, String roomId,
       {String message = ''}) async {
-    _requireVerified(uid);
+    _requireSignedInStudent(uid);
     if (message.length > TeamPolicy.maxRequestMessageLength) {
       throw const TeamPolicyException(AppStrings.requestMessageTooLong);
     }
@@ -275,7 +277,7 @@ class FirebaseTeamRepository implements TeamRepository {
   @override
   Future<void> decideRequest(
       String actorUid, String roomId, String requesterUid, bool approve) async {
-    _requireVerified(actorUid);
+    _requireSignedInStudent(actorUid);
     final expired = await db.runTransaction((tx) async {
       final roomRef = _room(roomId);
       final requesterRef = _user(requesterUid);
@@ -349,7 +351,7 @@ class FirebaseTeamRepository implements TeamRepository {
 
   @override
   Future<void> cancelRequest(String uid, String roomId) async {
-    _requireVerified(uid);
+    _requireSignedInStudent(uid);
     await db.runTransaction((tx) async {
       final userRef = _user(uid);
       final requestRef = _request(roomId, uid);
@@ -383,7 +385,7 @@ class FirebaseTeamRepository implements TeamRepository {
 
   @override
   Future<void> leaveRoom(String uid, String roomId) async {
-    _requireVerified(uid);
+    _requireSignedInStudent(uid);
     final emptied = await db.runTransaction((tx) async {
       final roomRef = _room(roomId);
       final userRef = _user(uid);
@@ -458,7 +460,7 @@ class FirebaseTeamRepository implements TeamRepository {
 
   @override
   Future<void> renameRoom(String uid, String roomId, String name) async {
-    _requireVerified(uid);
+    _requireSignedInStudent(uid);
     final clean = name.trim();
     if (clean.isEmpty) {
       throw const TeamPolicyException(AppStrings.roomNameRequired);
@@ -475,7 +477,7 @@ class FirebaseTeamRepository implements TeamRepository {
 
   @override
   Future<void> setLocked(String uid, String roomId, bool locked) async {
-    _requireVerified(uid);
+    _requireSignedInStudent(uid);
     await db.runTransaction((tx) async {
       final ref = _room(roomId);
       final doc = await tx.get(ref);
@@ -488,7 +490,7 @@ class FirebaseTeamRepository implements TeamRepository {
 
   @override
   Future<void> startVote(String uid, String roomId) async {
-    _requireVerified(uid);
+    _requireSignedInStudent(uid);
     await finalizeVote(roomId);
     await db.runTransaction((tx) async {
       final roomRef = _room(roomId);
@@ -521,7 +523,7 @@ class FirebaseTeamRepository implements TeamRepository {
 
   @override
   Future<void> castVote(String uid, String roomId, String candidateUid) async {
-    _requireVerified(uid);
+    _requireSignedInStudent(uid);
     await db.runTransaction((tx) async {
       final roomRef = _room(roomId);
       final voteRef = _vote(roomId);
@@ -584,7 +586,7 @@ class FirebaseTeamRepository implements TeamRepository {
 
   @override
   Future<void> proposeDisband(String uid, String roomId) async {
-    _requireVerified(uid);
+    _requireSignedInStudent(uid);
     await db.runTransaction((tx) async {
       final roomDoc = await tx.get(_room(roomId));
       final ref = _disband(roomId);
@@ -611,7 +613,7 @@ class FirebaseTeamRepository implements TeamRepository {
 
   @override
   Future<void> approveDisband(String uid, String roomId) async {
-    _requireVerified(uid);
+    _requireSignedInStudent(uid);
     final completed = await db.runTransaction((tx) async {
       final roomRef = _room(roomId);
       final disbandRef = _disband(roomId);

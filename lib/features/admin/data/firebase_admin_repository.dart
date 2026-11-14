@@ -19,11 +19,11 @@ class FirebaseAdminRepository implements RolloverStore {
   Future<void> requireAdmin() async {
     final user = auth.currentUser;
     final email = user?.email?.trim().toLowerCase();
-    if (user == null || !user.emailVerified || email == null || email.isEmpty) {
+    if (user == null || email == null || email.isEmpty) {
       throw const TeamPolicyException(AppStrings.adminVerifiedRequired);
     }
     final admin = await db.collection('admins').doc(email).get();
-    if (!admin.exists) {
+    if (!admin.exists || admin.data()?['uid'] != user.uid) {
       throw const TeamPolicyException(AppStrings.adminAccessDenied);
     }
   }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teamup_exe/core/theme/app_theme.dart';
 import 'package:teamup_exe/shared/widgets/app_shell.dart';
+import 'package:teamup_exe/shared/widgets/floating_nav_bar.dart';
 
 void main() {
   Future<void> pumpAtWidth(WidgetTester tester, double width) async {
@@ -23,13 +24,13 @@ void main() {
       (tester) async {
     await pumpAtWidth(tester, 1200);
     expect(find.byType(NavigationRail), findsNothing);
-    expect(find.byType(NavigationBar), findsOneWidget);
+    expect(find.byType(FloatingNavBar), findsOneWidget);
   });
 
   testWidgets('student shell uses bottom navigation below 600px',
       (tester) async {
     await pumpAtWidth(tester, 390);
     expect(find.byType(NavigationRail), findsNothing);
-    expect(find.byType(NavigationBar), findsOneWidget);
+    expect(find.byType(FloatingNavBar), findsOneWidget);
   });
 }

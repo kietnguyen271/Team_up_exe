@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../../../core/constants/app_strings.dart';
+import '../../../core/errors/app_error_mapper.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../shared/widgets/error_notice.dart';
 import '../data/firebase_crash_demo.dart';
@@ -32,7 +33,7 @@ class _CrashDemoSectionState extends State<CrashDemoSection> {
     } catch (error) {
       if (mounted)
         setState(() {
-          _error = error.toString();
+          _error = AppErrorMapper.message(error);
           _retry = action;
         });
     } finally {

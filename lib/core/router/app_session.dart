@@ -1,9 +1,11 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
+import '../../features/team/domain/team_policy.dart';
+
 enum SessionStage {
   signedOut,
-  unverified,
+  invalidEmail,
   needsProfile,
   needsServer,
   student,
@@ -27,12 +29,14 @@ class FirebaseAppSession implements AppSession {
   Future<SessionStage> resolve() async {
     final user = auth.currentUser;
     if (user == null) return SessionStage.signedOut;
-    if (!user.emailVerified) return SessionStage.unverified;
     final email = user.email?.trim().toLowerCase();
     if (email != null && email.isNotEmpty) {
       final admin = await firestore.collection('admins').doc(email).get();
-      if (admin.exists) return SessionStage.admin;
+      if (admin.exists && admin.data()?['uid'] == user.uid) {
+        return SessionStage.admin;
+      }
     }
+    if (!TeamPolicy.validEmail(email ?? '')) return SessionStage.invalidEmail;
     final profile = await firestore.collection('users').doc(user.uid).get();
     if (!profile.exists) return SessionStage.needsProfile;
     final data = profile.data()!;

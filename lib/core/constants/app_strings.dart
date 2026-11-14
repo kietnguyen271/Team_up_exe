@@ -1,4 +1,139 @@
 abstract final class AppStrings {
+  static const uiGallery = 'Thư viện giao diện';
+  static const uiGalleryIntro = 'Xem các thành phần và trạng thái mẫu.';
+  static const uiState = 'Trạng thái';
+  static const uiStateData = 'Có dữ liệu';
+  static const uiStateLoading = 'Đang tải';
+  static const uiStateEmpty = 'Trống';
+  static const uiStateError = 'Lỗi';
+  static const uiStateSuccess = 'Thành công';
+  static const uiStateDenied = 'Không có quyền';
+  static const uiStateProcessing = 'Đang xử lý';
+  static const uiStateConfirm = 'Xác nhận';
+  static const uiComponents = 'Thành phần dùng chung';
+  static const uiRoomExamples = 'Bàn và ghế của phòng';
+  static const uiNavigation = 'Điều hướng';
+  static const uiStudent = 'Sinh viên';
+  static const uiAdmin = 'Quản trị viên';
+  static const uiPreview = 'Xem thử';
+  static const uiDemoAction = 'Thử thao tác';
+  static const uiDemoToast = 'Đã ghi nhận thao tác mẫu.';
+  static const uiDemoConfirm = 'Bạn muốn tiếp tục thao tác mẫu?';
+  static const uiNoPermission = 'Bạn không có quyền xem nội dung này.';
+  static const uiEmptyRooms = 'Chưa có phòng nào để hiển thị.';
+  static const uiMockError = 'Không tải được dữ liệu mẫu.';
+  static const uiTryAgain = 'Thử lại';
+  static const uiScreenList = 'Danh sách màn hình';
+  static const uiComingLater =
+      'Màn hình sẽ được bổ sung ở giai đoạn tiếp theo.';
+  static const uiRoomOpenDetails = 'Xem chi tiết phòng';
+  static const uiReduceMotion = 'Giảm hiệu ứng';
+  static const oceanEffects = 'Hiệu ứng nền';
+  static const oceanGallery = 'Đại dương · Thư viện';
+  static const oceanGalleryIntro =
+      'So sánh các mức hiệu ứng trên cùng một đồng hồ hoạt ảnh.';
+  static String oceanModeLabel(String value) => switch (value) {
+        'auto' => 'Tự động',
+        'high' => 'Cao',
+        'medium' => 'Vừa',
+        'low' => 'Thấp',
+        _ => 'Tắt',
+      };
+  static String oceanDebugQuality(String value) =>
+      'Ocean · ${oceanModeLabel(value)}';
+  static String oceanOffReason(String value) => switch (value) {
+        'systemReducedMotion' => 'Hệ thống giảm chuyển động',
+        'batterySaver' => 'Tiết kiệm pin',
+        'userSetting' => 'Tùy chọn người dùng',
+        'governorStepDown' => 'Máy xử lý chậm',
+        'appInBackground' => 'Ứng dụng chạy nền',
+        'routeNotVisible' => 'Màn hình bị che',
+        _ => value,
+      };
+  static String oceanDebugStatus(String quality, String? reason) =>
+      reason == null
+          ? oceanDebugQuality(quality)
+          : '${oceanDebugQuality(quality)} · ${oceanOffReason(reason)}';
+  static const uiTypedInstruction = 'Nhập HOAN TAT để xác nhận';
+  static const confirm = 'Xác nhận';
+  static const uiExampleName = 'Phòng 3';
+  static const uiMockScreens = <String>[
+    'Mở ứng dụng',
+    'Đăng nhập',
+    'Đăng ký',
+    'Thiết lập hồ sơ',
+    'Chọn server',
+    'Phòng sinh viên',
+    'Chi tiết phòng',
+    'Thông báo sinh viên',
+    'Hồ sơ',
+    'Hoàn thành kỳ học',
+    'Phòng Admin',
+    'Học kỳ Admin',
+    'Thông báo Admin',
+    'Nhật ký demo',
+    'Kiểm tra Firebase',
+  ];
+  static const uiMockMembers = 'Thành viên mẫu';
+  static const uiMockRequests = 'Yêu cầu tham gia mẫu';
+  static const uiMockVotes = 'Bầu trưởng nhóm mẫu';
+  static const uiMockDisband = 'Giải tán mẫu';
+  static const uiMockRollover = 'Chuyển học kỳ mẫu';
+  static const uiMockPush = 'Trạng thái push mẫu';
+  static const uiMockCrash = 'Sự kiện crash mẫu';
+  static const uiSeatCount = 'Số chỗ';
+  static const uiSeedRoom1 = 'Phòng 1';
+  static const uiSeedRoom3 = 'Phòng 3';
+  static const uiSeedRoom5 = 'Phòng 5';
+  static const uiSeedRoom8 = 'Phòng 8';
+  static const uiSeedMyRoom = 'Nhóm của tôi';
+  static const uiSeedLargeRoom = 'Nhóm kỹ năng đa dạng';
+  static const uiSeedAn = 'An';
+  static const uiSeedBinh = 'Bình';
+  static const uiSeedChi = 'Chi';
+  static const uiSeedDung = 'Dũng';
+  static const uiSeedHuyen = 'Huyền';
+  static const uiSeedKhoa = 'Khoa';
+  static const uiSeedLinh = 'Linh';
+  static const uiSeedMinh = 'Minh';
+  static const uiSeedApproved = 'Đã chấp nhận';
+  static const uiSeedRejected = 'Từ chối';
+  static const uiSeedExpired = 'Hết hiệu lực';
+  static const uiSeedTwoVotes = '2 phiếu';
+  static const uiSeedOneVote = '1 phiếu';
+  static const uiSeedTwoOfFive = '2/5 người đồng ý';
+  static const uiSeedReady = 'Sẵn sàng';
+  static const uiSeedRunning = 'Đang chạy';
+  static const uiSeedDone = 'Đã xong';
+  static const uiSeedFailed = 'Thất bại';
+  static const uiSeedSending = 'Đang gửi';
+  static const uiSeedPending = 'Đang chờ';
+  static const uiSeedSent = 'Đã gửi';
+  static const uiSeedPushFailed = 'Gửi thất bại';
+  static const uiSeedAll = 'Tất cả';
+  static const uiSeedAndroid = 'Android';
+  static const uiSeedBackendBio = 'Làm Backend, biết SQL';
+  static const uiSeedFrontendBio = 'Thích giao diện và kiểm thử';
+  static const uiSeedAnnouncement = 'Lịch ghép nhóm mới';
+  static const uiSeedAnnouncementBody = 'Phòng EXE1 đã mở để tham gia.';
+  static const uiSkillBackend = 'Backend';
+  static const uiSkillFrontend = 'Frontend';
+  static const uiSkillDatabase = 'Database/SQL';
+  static const uiSkillTesting = 'Kiểm thử';
+  static String uiPreviewStateLabel(String state) => switch (state) {
+        'loading' => uiStateLoading,
+        'empty' => uiStateEmpty,
+        'error' => uiStateError,
+        'success' => uiStateSuccess,
+        'denied' => uiStateDenied,
+        'processing' => uiStateProcessing,
+        'confirm' => uiStateConfirm,
+        _ => uiStateData,
+      };
+  static String roomTileSemantics(
+          String name, int members, int capacity, String status,
+          {bool isMine = false}) =>
+      'Phòng $name, $members trên $capacity chỗ, $status${isMine ? ', $yourRoom' : ''}';
   static const appName = 'TeamUp EXE';
   static const appVersion = '0.1.0+1';
   static const rooms = 'Phòng';
@@ -9,6 +144,7 @@ abstract final class AppStrings {
   static const webAdminOnly = 'Trang web chỉ dành cho quản trị viên';
   static const adminIntro = 'Đăng nhập bằng tài khoản quản trị viên.';
   static const adminHome = 'Bảng điều khiển quản trị';
+  static const adminShortTitle = 'Quản trị';
   static const adminPlaceholder =
       'Nội dung quản trị sẽ được xây dựng ở giai đoạn sau.';
   static const studentPlaceholder =
@@ -49,13 +185,6 @@ abstract final class AppStrings {
   static const topicDone = 'Đã cập nhật chủ đề thông báo.';
   static const tokenSaved = 'Đã lưu FCM token.';
   static const login = 'Đăng nhập';
-  static const verifyEmail = 'Xác thực email';
-  static const verifyEmailIntro =
-      'Hãy mở email xác thực, sau đó quay lại ứng dụng.';
-  static const iVerified = 'Tôi đã xác thực';
-  static const resendVerification = 'Gửi lại email';
-  static const emailStillUnverified = 'Email chưa được xác thực.';
-  static const verificationSent = 'Đã gửi email xác thực.';
   static const completed = 'Đã hoàn thành kỳ học';
   static const completedIntro =
       'Bạn đã hoàn thành kỳ học. Hãy đăng xuất để kết thúc.';
@@ -73,10 +202,53 @@ abstract final class AppStrings {
   static const retry = 'Thử lại';
   static const loading = 'Đang tải…';
   static const genericError = 'Đã xảy ra lỗi.';
+  static const errorTitle = 'Không thể hoàn tất';
+  static const errorUnexpected = 'Hệ thống gặp sự cố. Vui lòng thử lại sau.';
+  static const errorNetwork =
+      'Không kết nối được dịch vụ. Hãy kiểm tra mạng rồi thử lại.';
+  static const errorTimeout =
+      'Kết nối mất quá nhiều thời gian. Vui lòng thử lại.';
+  static const errorPermissionDenied =
+      'Bạn không có quyền thực hiện thao tác này. Hãy đăng nhập lại hoặc liên hệ quản trị viên.';
+  static const errorSignInAgain =
+      'Phiên đăng nhập đã hết. Hãy đăng nhập lại để tiếp tục.';
+  static const errorInvalidEmail = 'Email chưa đúng định dạng.';
+  static const errorInvalidCredentials =
+      'Email hoặc mật khẩu không đúng. Hãy kiểm tra và thử lại.';
+  static const errorEmailAlreadyUsed =
+      'Email này đã có tài khoản. Hãy đăng nhập hoặc dùng email khác.';
+  static const errorWeakPassword =
+      'Mật khẩu chưa đủ mạnh. Hãy chọn mật khẩu dài và khó đoán hơn.';
+  static const errorAccountDisabled =
+      'Tài khoản đã bị vô hiệu hóa. Hãy liên hệ quản trị viên.';
+  static const errorTooManyAttempts =
+      'Bạn đã thử quá nhiều lần. Vui lòng chờ một lúc rồi thử lại.';
+  static const errorAuthUnavailable =
+      'Chức năng đăng nhập hiện chưa sẵn sàng. Vui lòng thử lại sau.';
+  static const errorDataMissing =
+      'Nội dung này không còn tồn tại. Hãy quay lại và tải lại danh sách.';
+  static const errorAlreadyExists =
+      'Nội dung này đã tồn tại. Hãy kiểm tra lại trước khi tạo mới.';
+  static const errorDataChanged =
+      'Dữ liệu vừa thay đổi. Hãy tải lại rồi thực hiện lại thao tác.';
+  static const errorServiceBusy = 'Dịch vụ đang bận. Vui lòng thử lại sau.';
+  static const errorInvalidInput =
+      'Thông tin nhập chưa hợp lệ. Hãy kiểm tra và thử lại.';
+  static const errorSetup =
+      'Ứng dụng chưa kết nối được Firebase. Hãy kiểm tra cấu hình rồi khởi động lại.';
+  static const errorPushFailed =
+      'Không gửi được thông báo. Hãy kiểm tra người nhận và thử lại.';
   static const comingSoon =
       'Tính năng này sẽ được hoàn thiện ở bước tiếp theo.';
   static const loginIntro = 'Đăng nhập để tiếp tục với TeamUp EXE.';
-  static const registerIntro = 'Tạo tài khoản để tham gia TeamUp EXE.';
+  static const registerIntro =
+      'Tạo tài khoản sinh viên để tham gia TeamUp EXE.';
+  static const adminLoginHint =
+      'Quản trị viên đăng nhập tại đây bằng tài khoản đã được cấp quyền.';
+  static const localDemoMode =
+      'Đang dùng Firebase Emulator trên máy này. Tài khoản demo chỉ hoạt động khi dịch vụ giả lập đang chạy.';
+  static const adminRegistrationHint =
+      'Tài khoản quản trị viên do người quản lý hệ thống tạo và cấp quyền riêng.';
   static const profileIntro =
       'Giới thiệu bản thân và chọn kỹ năng để nhóm hiểu bạn hơn.';
   static const serverIntro = 'Chọn EXE1 hoặc EXE2 trước khi xem phòng.';
@@ -86,6 +258,10 @@ abstract final class AppStrings {
   static const sampleRooms = 'Danh sách phòng';
   static const searchRooms = 'Tìm phòng';
   static const noRooms = 'Chưa có phòng phù hợp.';
+  static String noRoomsCreated(String serverId) =>
+      'Chưa có phòng trong ${serverId.toUpperCase()}. Quản trị viên cần tạo phòng.';
+  static const noOpenRooms =
+      'Tất cả phòng đã khóa. Hãy chờ trưởng nhóm mở khóa hoặc quản trị viên tạo phòng mới.';
   static const roomEmpty = 'Trống';
   static const roomOpen = 'Đang mở';
   static const roomLocked = 'Đã khóa';
@@ -130,6 +306,8 @@ abstract final class AppStrings {
   static const approvedDisband = 'người đã đồng ý';
   static const joinRequests = 'Yêu cầu tham gia';
   static const noJoinRequests = 'Không có yêu cầu đang chờ.';
+  static String pendingJoinRequests(int count) =>
+      '$count yêu cầu đang chờ duyệt';
   static const createRooms = 'Tạo phòng hàng loạt';
   static const roomCount = 'Số phòng';
   static const capacity = 'Sức chứa';
@@ -184,7 +362,7 @@ abstract final class AppStrings {
   static String pushJobDetails(String status, String? error) =>
       error == null || error.isEmpty
           ? pushStatus(status)
-          : '${pushStatus(status)} · $error';
+          : '${pushStatus(status)} · $errorPushFailed';
   static const announcementTitle = 'Tiêu đề';
   static const announcementBody = 'Nội dung';
   static const noAnnouncements = 'Chưa có thông báo.';
@@ -193,7 +371,7 @@ abstract final class AppStrings {
   static const requestPending = 'Chờ duyệt';
   static const requestExpired =
       'Yêu cầu đã hết hạn hoặc phòng không còn nhận thành viên.';
-  static const invalidSchoolEmail = 'Chỉ chấp nhận email FPT hoặc FE.';
+  static const invalidSchoolEmail = 'Chỉ chấp nhận email @fpt.edu.vn.';
   static const passwordTooShort = 'Mật khẩu cần ít nhất 8 ký tự.';
   static const nameRequired = 'Hãy nhập tên của bạn.';
   static const bioInvalid = 'Giới thiệu cần từ 1 đến 280 ký tự.';
@@ -205,7 +383,6 @@ abstract final class AppStrings {
   static const groupIsFull = 'Nhóm đã đủ thành viên.';
   static const emptyRoomJoinDirectly = 'Phòng trống: hãy tham gia trực tiếp.';
   static const tooManyRequests = 'Bạn chỉ được có tối đa 3 yêu cầu chờ.';
-  static const verifyEmailFirst = 'Hãy xác thực email trước.';
   static const invalidServer = 'Server không hợp lệ.';
   static const setupProfileFirst = 'Hãy thiết lập hồ sơ trước.';
   static const cannotChangeServer = 'Không thể đổi server lúc này.';
@@ -231,7 +408,7 @@ abstract final class AppStrings {
   static const disbandMissing = 'Không có đề xuất giải tán.';
   static const membersVoteOnly = 'Chỉ thành viên được biểu quyết.';
   static const disbandFinished = 'Đề xuất đã kết thúc.';
-  static const adminVerifiedRequired = 'Cần tài khoản admin đã xác thực.';
+  static const adminVerifiedRequired = 'Cần đăng nhập bằng tài khoản admin.';
   static const adminAccessDenied = 'Tài khoản không có quyền admin.';
   static const announcementFieldsRequired = 'Hãy nhập tiêu đề và nội dung.';
   static const pushFieldsInvalid = 'Thông tin gửi push không hợp lệ.';
@@ -253,7 +430,7 @@ abstract final class AppStrings {
   static const emailRequired = 'Vui lòng nhập email.';
   static const passwordRequired = 'Vui lòng nhập mật khẩu.';
   static const formPending = 'Kết nối tài khoản sẽ có ở bước tiếp theo.';
-  static const goToRegister = 'Chưa có tài khoản? Đăng ký';
+  static const goToRegister = 'Sinh viên chưa có tài khoản? Đăng ký';
   static const goToLogin = 'Đã có tài khoản? Đăng nhập';
   static const openProfile = 'Mở hồ sơ';
   static const openRooms = 'Mở phòng';
@@ -264,8 +441,6 @@ abstract final class AppStrings {
       'Chạy từng thao tác và xem kết quả hoặc lỗi nguyên văn bên dưới.';
   static const firebaseInitialize = 'Khởi tạo Firebase';
   static const firebaseRegister = 'Tạo tài khoản';
-  static const firebaseSendVerification = 'Gửi email xác thực';
-  static const firebaseReloadVerification = 'Tải lại trạng thái xác thực';
   static const firebaseSignIn = 'Đăng nhập Firebase';
   static const firebaseSignOut = 'Đăng xuất Firebase';
   static const firebaseWrite = 'Ghi tài liệu';
@@ -300,7 +475,6 @@ abstract final class AppStrings {
   static const firebaseDocumentAbsent = 'Tài liệu đã bị xóa';
   static String firebaseProject(String projectId) => 'Dự án: $projectId';
   static String firebaseUser(String uid) => 'UID: $uid';
-  static String firebaseVerified(bool value) => 'Đã xác thực email: $value';
   static String firebaseCount(int value) => 'Số lượng: $value';
   static String firebaseCounter(int value) => 'Bộ đếm: $value';
   static String rolloverPreview(int completedStudents, int movedRooms,

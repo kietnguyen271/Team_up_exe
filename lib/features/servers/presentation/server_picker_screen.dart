@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_strings.dart';
+import '../../../core/errors/app_error_mapper.dart';
 import '../../../core/theme/app_tokens.dart';
+import '../../../core/theme/ocean_colors.dart';
 import '../../../shared/widgets/app_shell.dart';
 import '../../../shared/widgets/error_notice.dart';
 import '../../team/data/firebase_team_repository.dart';
@@ -35,7 +37,7 @@ class _ServerPickerScreenState extends State<ServerPickerScreen> {
       await _repository.chooseServer(uid, serverId);
       if (mounted) context.go('/gate');
     } catch (error) {
-      if (mounted) setState(() => _error = error.toString());
+      if (mounted) setState(() => _error = AppErrorMapper.message(error));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -86,6 +88,7 @@ class _ServerCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final ocean = Theme.of(context).extension<OceanColors>()!;
     return SizedBox(
       width: AppSizes.serverCardWidth,
       child: Card(
@@ -93,19 +96,31 @@ class _ServerCard extends StatelessWidget {
           onTap: onTap,
           hoverColor: scheme.surfaceContainer,
           focusColor: scheme.surfaceContainer,
-          borderRadius: BorderRadius.circular(AppRadius.r12),
+          borderRadius: BorderRadius.circular(AppRadius.r20),
           child: Padding(
             padding: const EdgeInsets.all(AppSpacing.s24),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(Icons.dns_outlined,
-                    color: scheme.primary, size: AppSizes.icon),
+                CircleAvatar(
+                  radius: AppSizes.icon,
+                  backgroundColor: ocean.lagoon,
+                  child: Icon(Icons.water_rounded,
+                      color: ocean.deepNavy, size: AppSizes.icon),
+                ),
                 const SizedBox(height: AppSpacing.s16),
                 Text(label, style: Theme.of(context).textTheme.titleLarge),
                 const SizedBox(height: AppSpacing.s8),
-                Text(AppStrings.select,
-                    style: Theme.of(context).textTheme.labelLarge),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(AppStrings.select,
+                          style: Theme.of(context).textTheme.labelLarge),
+                    ),
+                    Icon(Icons.arrow_forward_rounded,
+                        color: ocean.teal, size: AppSizes.icon),
+                  ],
+                ),
               ],
             ),
           ),

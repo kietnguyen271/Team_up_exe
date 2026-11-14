@@ -31,13 +31,14 @@ async function seed() {
   }
 
   await db.collection('admins').doc(email).set({
+    uid: user.uid,
     addedAt: FieldValue.serverTimestamp(),
     demo: true,
   }, { merge: true });
 
   const templates = {
-    exe1: [{ name: 'Room 1', capacity: 5 }, { name: 'Room 2', capacity: 4 }],
-    exe2: [{ name: 'Room 1', capacity: 5 }, { name: 'Room 2', capacity: 5 }],
+    exe1: [{ name: 'Room 1', capacity: 6 }, { name: 'Room 2', capacity: 6 }],
+    exe2: [{ name: 'Room 1', capacity: 6 }, { name: 'Room 2', capacity: 6 }],
   };
   for (const [serverId, rooms] of Object.entries(templates)) {
     await db.collection('servers').doc(serverId).set({

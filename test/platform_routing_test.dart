@@ -5,6 +5,7 @@ import 'package:teamup_exe/core/router/app_session.dart';
 import 'package:teamup_exe/core/theme/app_theme.dart';
 import 'package:teamup_exe/features/admin/presentation/admin_shell.dart';
 import 'package:teamup_exe/features/auth/presentation/auth_form_screen.dart';
+import 'package:teamup_exe/shared/widgets/floating_nav_bar.dart';
 
 class _Session implements AppSession {
   _Session(this.stage);
@@ -18,13 +19,16 @@ void main() {
   test('Android role routing sends admins to admin and students to rooms', () {
     expect(AppRouter.routeForStage(SessionStage.admin), '/admin');
     expect(AppRouter.routeForStage(SessionStage.student), '/home');
-    expect(AppRouter.routeForStage(SessionStage.needsProfile), '/profile-setup');
-    expect(AppRouter.routeForStage(SessionStage.unverified), '/verify-email');
+    expect(
+        AppRouter.routeForStage(SessionStage.needsProfile), '/profile-setup');
+    expect(
+        AppRouter.routeForStage(SessionStage.invalidEmail), '/invalid-email');
     expect(AppRouter.routeForStage(SessionStage.completed), '/completed');
   });
 
   testWidgets('signed-out Android user sees login', (tester) async {
-    final router = AppRouter.create(isWeb: false, session: _Session(SessionStage.signedOut));
+    final router = AppRouter.create(
+        isWeb: false, session: _Session(SessionStage.signedOut));
     addTearDown(router.dispose);
     await tester.pumpWidget(MaterialApp.router(
       theme: AppTheme.light,
@@ -49,7 +53,7 @@ void main() {
         child: const Text('Quản trị'),
       ),
     ));
-    expect(find.byType(NavigationBar), findsOneWidget);
+    expect(find.byType(FloatingNavBar), findsOneWidget);
     expect(find.byType(NavigationRail), findsNothing);
   });
 }

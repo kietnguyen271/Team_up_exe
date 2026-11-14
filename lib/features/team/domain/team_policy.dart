@@ -1,7 +1,8 @@
 import '../../../core/constants/app_strings.dart';
+import '../../../core/errors/app_user_exception.dart';
 import 'team_models.dart';
 
-class TeamPolicyException implements Exception {
+class TeamPolicyException implements Exception, AppUserException {
   const TeamPolicyException(this.message);
   final String message;
   @override
@@ -19,17 +20,14 @@ abstract final class TeamPolicy {
   static const rolloverLease = Duration(minutes: 10);
   static const maxBatchWrites = 400;
 
-  static bool validEmail(String email, {bool allowAnyEmail = false}) {
+  static bool validEmail(String email) {
     final value = email.trim().toLowerCase();
     if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(value)) return false;
-    return allowAnyEmail ||
-        value.endsWith('@fpt.edu.vn') ||
-        value.endsWith('@fe.edu.vn');
+    return value.endsWith('@fpt.edu.vn');
   }
 
-  static void validateRegistration(String email, String password,
-      {bool allowAnyEmail = false}) {
-    if (!validEmail(email, allowAnyEmail: allowAnyEmail)) {
+  static void validateRegistration(String email, String password) {
+    if (!validEmail(email)) {
       throw const TeamPolicyException(AppStrings.invalidSchoolEmail);
     }
     if (password.length < minPasswordLength) {
@@ -66,6 +64,10 @@ abstract final class TeamPolicy {
       throw const TeamPolicyException(AppStrings.groupIsFull);
     }
   }
+
+  /// Locked rooms remain accessible to their members so the leader can reopen them.
+  static bool canSeeRoom(TeamUser user, TeamRoom room) =>
+      !room.locked || room.contains(user.id);
 
   static void checkRequest(TeamUser user, TeamRoom room) {
     checkJoin(user, room);

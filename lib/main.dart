@@ -7,18 +7,28 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'app.dart';
 import 'core/constants/app_strings.dart';
+import 'core/errors/app_error_mapper.dart';
 import 'core/notifications/fcm_background_handler.dart';
 import 'core/notifications/notification_runtime.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
+import 'features/ui_gallery/presentation/ui_prototype_app.dart';
 import 'firebase_options.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+  SystemChrome.setSystemUIOverlayStyle(AppTheme.oceanSystemBars);
+  const uiPrototype = bool.fromEnvironment('UI_PROTOTYPE');
+  if (kDebugMode && uiPrototype) {
+    runApp(const ProviderScope(child: UiPrototypeApp()));
+    return;
+  }
   String? startupError;
   final isAndroid = !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
   const requestedLocalDemo = bool.fromEnvironment('USE_FIREBASE_EMULATORS');
@@ -59,7 +69,8 @@ Future<void> main() async {
       };
     }
   } catch (error) {
-    startupError = error.toString();
+    if (kDebugMode) debugPrint('Firebase startup error: $error');
+    startupError = AppErrorMapper.message(error);
   }
 
   runApp(ProviderScope(child: TeamUpApp(startupError: startupError)));

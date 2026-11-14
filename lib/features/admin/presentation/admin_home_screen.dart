@@ -3,8 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_strings.dart';
+import '../../../core/errors/app_error_mapper.dart';
 import '../../../core/notifications/notification_runtime.dart';
 import '../../../core/theme/app_tokens.dart';
+import '../../../core/theme/ocean_colors.dart';
+import '../../../shared/ocean/reef_section_card.dart';
 import '../../../shared/widgets/error_notice.dart';
 import '../../../shared/widgets/room_table_card.dart';
 import '../../team/domain/team_models.dart';
@@ -42,7 +45,7 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
     try {
       await action();
     } catch (error) {
-      if (mounted) setState(() => _error = error.toString());
+      if (mounted) setState(() => _error = AppErrorMapper.message(error));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -126,7 +129,7 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
             future: _repository.getRoomMembers(memberIds),
             builder: (context, snapshot) {
               if (snapshot.hasError) {
-                return ErrorNotice(message: snapshot.error.toString());
+                return ErrorNotice.fromError(error: snapshot.error!);
               }
               if (!snapshot.hasData) {
                 return const Center(child: CircularProgressIndicator());
@@ -205,26 +208,39 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
           Text(AppStrings.rooms,
               style: Theme.of(context).textTheme.headlineSmall),
           const SizedBox(height: AppSpacing.s16),
-          _serverSelector(),
-          Wrap(spacing: AppSpacing.s8, children: [
-            FilledButton.icon(
-              onPressed: _busy ? null : _createRooms,
-              icon: const Icon(Icons.add),
-              label: const Text(AppStrings.createRooms),
+          ReefSectionCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _serverSelector(),
+                Wrap(
+                    spacing: AppSpacing.s8,
+                    runSpacing: AppSpacing.s8,
+                    children: [
+                      FilledButton.icon(
+                        onPressed: _busy ? null : _createRooms,
+                        icon: const Icon(Icons.add),
+                        label: const Text(AppStrings.createRooms),
+                      ),
+                      OutlinedButton.icon(
+                        onPressed: _busy ? null : _editTemplate,
+                        icon: const Icon(Icons.edit_note_outlined),
+                        label: const Text(AppStrings.editTemplate),
+                      ),
+                    ]),
+              ],
             ),
-            OutlinedButton.icon(
-              onPressed: _busy ? null : _editTemplate,
-              icon: const Icon(Icons.edit_note_outlined),
-              label: const Text(AppStrings.editTemplate),
-            ),
-          ]),
+          ),
           const SizedBox(height: AppSpacing.s16),
           Expanded(
             child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
               stream: _repository.watchRooms(_serverId),
               builder: (context, snapshot) {
                 if (snapshot.hasError) {
-                  return ErrorNotice(message: snapshot.error.toString());
+                  return ErrorNotice.fromError(
+                    error: snapshot.error!,
+                    onRetry: () => setState(() {}),
+                  );
                 }
                 if (!snapshot.hasData) {
                   return const Center(child: CircularProgressIndicator());
@@ -236,9 +252,9 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
                 return GridView.builder(
                   gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
                     maxCrossAxisExtent: AppSizes.adminRoomTileMaxWidth,
-                    mainAxisSpacing: AppSpacing.s8,
-                    crossAxisSpacing: AppSpacing.s8,
-                    childAspectRatio: 1,
+                    mainAxisSpacing: AppSpacing.s16,
+                    crossAxisSpacing: AppSpacing.s16,
+                    childAspectRatio: AppSizes.reefCardAspectRatio,
                   ),
                   itemCount: rooms.length,
                   itemBuilder: (context, index) {
@@ -322,11 +338,15 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
             Text(AppStrings.semester,
                 style: Theme.of(context).textTheme.headlineSmall),
             const SizedBox(height: AppSpacing.s16),
-            StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+            ReefSectionCard(
+                child: StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
               stream: _repository.watchRollover(),
               builder: (context, snapshot) {
                 if (snapshot.hasError) {
-                  return ErrorNotice(message: snapshot.error.toString());
+                  return ErrorNotice.fromError(
+                    error: snapshot.error!,
+                    onRetry: () => setState(() {}),
+                  );
                 }
                 final data = snapshot.data?.data();
                 if (data == null) return const SizedBox.shrink();
@@ -338,7 +358,7 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
                   )),
                 );
               },
-            ),
+            )),
             OutlinedButton.icon(
               onPressed: _busy
                   ? null
@@ -351,14 +371,15 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
             ),
             if (_preview != null) ...[
               const SizedBox(height: AppSpacing.s16),
-              Text(
-                  AppStrings.rolloverPreview(
-                    _preview!.exe2StudentCount,
-                    _preview!.exe1RoomCount,
-                    _preview!.exe1StudentCount,
-                    _preview!.renewedExe1RoomCount,
-                  ),
-                  style: Theme.of(context).textTheme.bodyLarge),
+              ReefSectionCard(
+                  child: Text(
+                      AppStrings.rolloverPreview(
+                        _preview!.exe2StudentCount,
+                        _preview!.exe1RoomCount,
+                        _preview!.exe1StudentCount,
+                        _preview!.renewedExe1RoomCount,
+                      ),
+                      style: Theme.of(context).textTheme.bodyLarge)),
               const SizedBox(height: AppSpacing.s16),
               FilledButton.icon(
                 onPressed: _busy
@@ -411,79 +432,94 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
           Text(AppStrings.notifications,
               style: Theme.of(context).textTheme.headlineSmall),
           const SizedBox(height: AppSpacing.s16),
-          DropdownButton<String>(
-            value: _notificationTarget,
-            items: const [
-              DropdownMenuItem(
-                  value: 'all', child: Text(AppStrings.allServers)),
-              DropdownMenuItem(value: 'exe1', child: Text(AppStrings.exe1)),
-              DropdownMenuItem(value: 'exe2', child: Text(AppStrings.exe2)),
-            ],
-            onChanged: (value) {
-              if (value != null) setState(() => _notificationTarget = value);
-            },
-          ),
-          FilledButton.icon(
-            onPressed: _busy
-                ? null
-                : () async {
-                    final title = await _askText(AppStrings.newAnnouncement,
-                        AppStrings.announcementTitle);
-                    if (title == null || !mounted) return;
-                    final body = await _askText(AppStrings.newAnnouncement,
-                        AppStrings.announcementBody);
-                    if (body != null) {
-                      await _run(() => _repository.createAnnouncement(
-                          title, body, _notificationTarget));
-                    }
+          ReefSectionCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                DropdownButton<String>(
+                  value: _notificationTarget,
+                  items: const [
+                    DropdownMenuItem(
+                        value: 'all', child: Text(AppStrings.allServers)),
+                    DropdownMenuItem(
+                        value: 'exe1', child: Text(AppStrings.exe1)),
+                    DropdownMenuItem(
+                        value: 'exe2', child: Text(AppStrings.exe2)),
+                  ],
+                  onChanged: (value) {
+                    if (value != null)
+                      setState(() => _notificationTarget = value);
                   },
-            icon: const Icon(Icons.add_alert_outlined),
-            label: const Text(AppStrings.newAnnouncement),
-          ),
-          const SizedBox(height: AppSpacing.s8),
-          DropdownButton<String>(
-            value: _pushTarget,
-            items: const [
-              DropdownMenuItem(value: 'room', child: Text(AppStrings.pushRoom)),
-              DropdownMenuItem(
-                  value: 'server', child: Text(AppStrings.pushServer)),
-              DropdownMenuItem(value: 'user', child: Text(AppStrings.pushUser)),
-              DropdownMenuItem(value: 'all', child: Text(AppStrings.pushAll)),
-            ],
-            onChanged: (value) {
-              if (value != null) setState(() => _pushTarget = value);
-            },
-          ),
-          OutlinedButton.icon(
-            onPressed: _busy
-                ? null
-                : () async {
-                    final targetKind = _pushTarget;
-                    String targetId = '';
-                    if (targetKind != 'all') {
-                      final enteredId = await _askText(
-                        AppStrings.sendPush,
-                        targetKind == 'room'
-                            ? AppStrings.roomId
-                            : targetKind == 'server'
-                                ? AppStrings.serverId
-                                : AppStrings.userId,
-                      );
-                      if (enteredId == null || !mounted) return;
-                      targetId = enteredId;
-                    }
-                    final title = await _askText(
-                        AppStrings.sendPush, AppStrings.announcementTitle);
-                    if (title == null || !mounted) return;
-                    final body = await _askText(
-                        AppStrings.sendPush, AppStrings.announcementBody);
-                    if (body != null) {
-                      await _run(() => _repository.queueBroadcastPush(
-                          title, body, targetKind, targetId));
-                    }
+                ),
+                FilledButton.icon(
+                  onPressed: _busy
+                      ? null
+                      : () async {
+                          final title = await _askText(
+                              AppStrings.newAnnouncement,
+                              AppStrings.announcementTitle);
+                          if (title == null || !mounted) return;
+                          final body = await _askText(
+                              AppStrings.newAnnouncement,
+                              AppStrings.announcementBody);
+                          if (body != null) {
+                            await _run(() => _repository.createAnnouncement(
+                                title, body, _notificationTarget));
+                          }
+                        },
+                  icon: const Icon(Icons.add_alert_outlined),
+                  label: const Text(AppStrings.newAnnouncement),
+                ),
+                const SizedBox(height: AppSpacing.s8),
+                DropdownButton<String>(
+                  value: _pushTarget,
+                  items: const [
+                    DropdownMenuItem(
+                        value: 'room', child: Text(AppStrings.pushRoom)),
+                    DropdownMenuItem(
+                        value: 'server', child: Text(AppStrings.pushServer)),
+                    DropdownMenuItem(
+                        value: 'user', child: Text(AppStrings.pushUser)),
+                    DropdownMenuItem(
+                        value: 'all', child: Text(AppStrings.pushAll)),
+                  ],
+                  onChanged: (value) {
+                    if (value != null) setState(() => _pushTarget = value);
                   },
-            icon: const Icon(Icons.send_outlined),
-            label: const Text(AppStrings.sendPush),
+                ),
+                OutlinedButton.icon(
+                  onPressed: _busy
+                      ? null
+                      : () async {
+                          final targetKind = _pushTarget;
+                          String targetId = '';
+                          if (targetKind != 'all') {
+                            final enteredId = await _askText(
+                              AppStrings.sendPush,
+                              targetKind == 'room'
+                                  ? AppStrings.roomId
+                                  : targetKind == 'server'
+                                      ? AppStrings.serverId
+                                      : AppStrings.userId,
+                            );
+                            if (enteredId == null || !mounted) return;
+                            targetId = enteredId;
+                          }
+                          final title = await _askText(AppStrings.sendPush,
+                              AppStrings.announcementTitle);
+                          if (title == null || !mounted) return;
+                          final body = await _askText(
+                              AppStrings.sendPush, AppStrings.announcementBody);
+                          if (body != null) {
+                            await _run(() => _repository.queueBroadcastPush(
+                                title, body, targetKind, targetId));
+                          }
+                        },
+                  icon: const Icon(Icons.send_outlined),
+                  label: const Text(AppStrings.sendPush),
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: AppSpacing.s16),
           Expanded(
@@ -491,7 +527,10 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
               stream: _repository.watchAnnouncements(),
               builder: (context, snapshot) {
                 if (snapshot.hasError) {
-                  return ErrorNotice(message: snapshot.error.toString());
+                  return ErrorNotice.fromError(
+                    error: snapshot.error!,
+                    onRetry: () => setState(() {}),
+                  );
                 }
                 if (!snapshot.hasData) {
                   return const Center(child: CircularProgressIndicator());
@@ -504,7 +543,12 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
                     for (final doc in snapshot.data!.docs)
                       Card(
                         child: ListTile(
-                          leading: const Icon(Icons.notifications_outlined),
+                          leading: CircleAvatar(
+                            backgroundColor: Theme.of(context)
+                                .extension<OceanColors>()!
+                                .lagoon,
+                            child: const Icon(Icons.notifications_outlined),
+                          ),
                           title: Text(doc.data()['title'] as String? ?? ''),
                           subtitle: Text(doc.data()['body'] as String? ?? ''),
                         ),
@@ -522,7 +566,10 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
               stream: _repository.watchPushJobs(),
               builder: (context, snapshot) {
                 if (snapshot.hasError) {
-                  return ErrorNotice(message: snapshot.error.toString());
+                  return ErrorNotice.fromError(
+                    error: snapshot.error!,
+                    onRetry: () => setState(() {}),
+                  );
                 }
                 if (!snapshot.hasData) {
                   return const Center(child: CircularProgressIndicator());
@@ -557,7 +604,10 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
               stream: _repository.watchDemoEvents(),
               builder: (context, snapshot) {
                 if (snapshot.hasError) {
-                  return ErrorNotice(message: snapshot.error.toString());
+                  return ErrorNotice.fromError(
+                    error: snapshot.error!,
+                    onRetry: () => setState(() {}),
+                  );
                 }
                 if (!snapshot.hasData) {
                   return const Center(child: CircularProgressIndicator());
@@ -570,7 +620,12 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
                     for (final doc in snapshot.data!.docs)
                       Card(
                         child: ListTile(
-                          leading: const Icon(Icons.bug_report_outlined),
+                          leading: CircleAvatar(
+                            backgroundColor: Theme.of(context)
+                                .extension<OceanColors>()!
+                                .lagoon,
+                            child: const Icon(Icons.bug_report_outlined),
+                          ),
                           title: Text(doc.data()['uid'] as String? ?? ''),
                           subtitle: Text(
                               '${doc.data()['deviceInfo']} · ${doc.data()['appVersion']}'),

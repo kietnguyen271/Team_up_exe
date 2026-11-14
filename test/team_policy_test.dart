@@ -19,12 +19,15 @@ void main() {
     serverId: 'exe1',
   );
 
-  test('registration accepts university domains and validates password', () {
+  test('registration accepts only FPT email and validates password', () {
     expect(TeamPolicy.validEmail(' Student@FPT.EDU.VN '), isTrue);
-    expect(TeamPolicy.validEmail('teacher@fe.edu.vn'), isTrue);
+    expect(TeamPolicy.validEmail('teacher@fe.edu.vn'), isFalse);
     expect(TeamPolicy.validEmail('student@gmail.com'), isFalse);
-    expect(TeamPolicy.validEmail('student@gmail.com', allowAnyEmail: true),
-        isTrue);
+    expect(TeamPolicy.validEmail('student@fakefpt.edu.vn'), isFalse);
+    expect(
+      () => TeamPolicy.validateRegistration('student@fe.edu.vn', 'password123'),
+      throwsA(isA<TeamPolicyException>()),
+    );
     expect(
       () => TeamPolicy.validateRegistration('student@fpt.edu.vn', 'short'),
       throwsA(isA<TeamPolicyException>()),
@@ -80,6 +83,46 @@ void main() {
       ),
       throwsA(isA<TeamPolicyException>()),
     );
+  });
+
+  test('students see rooms until locked, while members retain access', () {
+    const open = TeamRoom(
+      id: 'open',
+      serverId: 'exe1',
+      name: 'Phòng mở',
+      capacity: 2,
+      memberIds: ['other'],
+    );
+    const full = TeamRoom(
+      id: 'full',
+      serverId: 'exe1',
+      name: 'Phòng đủ người',
+      capacity: 1,
+      memberIds: ['other'],
+    );
+    const locked = TeamRoom(
+      id: 'locked',
+      serverId: 'exe1',
+      name: 'Phòng khóa',
+      capacity: 2,
+      memberIds: ['leader'],
+      leaderId: 'leader',
+      locked: true,
+    );
+    const leader = TeamUser(
+      id: 'leader',
+      name: 'Trưởng nhóm',
+      email: 'leader@fpt.edu.vn',
+      bio: 'Bio',
+      skills: ['Backend'],
+      serverId: 'exe1',
+      roomId: 'locked',
+    );
+
+    expect(TeamPolicy.canSeeRoom(student, open), isTrue);
+    expect(TeamPolicy.canSeeRoom(student, full), isTrue);
+    expect(TeamPolicy.canSeeRoom(student, locked), isFalse);
+    expect(TeamPolicy.canSeeRoom(leader, locked), isTrue);
   });
 
   test('vote majority, expiry, tie and departed voters', () {

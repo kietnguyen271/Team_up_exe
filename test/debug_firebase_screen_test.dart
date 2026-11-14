@@ -17,9 +17,18 @@ void main() {
     final router = AppRouter.create(isWeb: false, session: _SignedOutSession());
     addTearDown(router.dispose);
     await tester.pumpWidget(TeamUpApp(router: router));
-    await tester.pumpAndSettle();
+    for (var attempt = 0;
+        attempt < 10 && find.text(AppStrings.firebaseDebug).evaluate().isEmpty;
+        attempt++) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
     await tester.tap(find.text(AppStrings.firebaseDebug));
-    await tester.pumpAndSettle();
+    for (var attempt = 0;
+        attempt < 10 &&
+            find.text(AppStrings.firebaseInitialize).evaluate().isEmpty;
+        attempt++) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
 
     expect(find.text(AppStrings.firebaseInitialize), findsOneWidget);
   });

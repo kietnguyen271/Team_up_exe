@@ -8,6 +8,11 @@ class AppColors extends ThemeExtension<AppColors> {
     required this.successContainer,
     required this.warning,
     required this.warningContainer,
+    required this.indigo,
+    required this.violet,
+    required this.mint,
+    required this.lilac,
+    required this.peach,
   });
 
   final Color accent;
@@ -15,6 +20,11 @@ class AppColors extends ThemeExtension<AppColors> {
   final Color successContainer;
   final Color warning;
   final Color warningContainer;
+  final Color indigo;
+  final Color violet;
+  final Color mint;
+  final Color lilac;
+  final Color peach;
 
   @override
   AppColors copyWith({
@@ -23,6 +33,11 @@ class AppColors extends ThemeExtension<AppColors> {
     Color? successContainer,
     Color? warning,
     Color? warningContainer,
+    Color? indigo,
+    Color? violet,
+    Color? mint,
+    Color? lilac,
+    Color? peach,
   }) =>
       AppColors(
         accent: accent ?? this.accent,
@@ -30,6 +45,11 @@ class AppColors extends ThemeExtension<AppColors> {
         successContainer: successContainer ?? this.successContainer,
         warning: warning ?? this.warning,
         warningContainer: warningContainer ?? this.warningContainer,
+        indigo: indigo ?? this.indigo,
+        violet: violet ?? this.violet,
+        mint: mint ?? this.mint,
+        lilac: lilac ?? this.lilac,
+        peach: peach ?? this.peach,
       );
 
   @override
@@ -49,6 +69,11 @@ class AppColors extends ThemeExtension<AppColors> {
         other.warningContainer,
         t,
       )!,
+      indigo: Color.lerp(indigo, other.indigo, t)!,
+      violet: Color.lerp(violet, other.violet, t)!,
+      mint: Color.lerp(mint, other.mint, t)!,
+      lilac: Color.lerp(lilac, other.lilac, t)!,
+      peach: Color.lerp(peach, other.peach, t)!,
     );
   }
 }
